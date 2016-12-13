@@ -1,9 +1,8 @@
 /*
-	DS3231 clock for Attiny2313A
+	DS3231 clock implemented on Attiny2313A using 5641-BSR 7 segment display
 	(c) Ruslan Mikhaylenko 28.11.2016
-	Some examples could be found here
-	https://bitbucket.org/21h/self-made-wall-bracket-clock/src
 */
+
 //#define F_CPU 31250
 #define F_CPU 1000000
 /*	by Default: F_CPU = 8000000Mhz / 8(divider by fuses) = 1000000. 
