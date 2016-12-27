@@ -46,10 +46,10 @@ X-X-X-X-X-X-X-D
 volatile uint8_t minutes_register	= 0;
 volatile uint8_t hours_register		= 0;
 
-volatile uint8_t digit_dec_minutes	= 0;
-volatile uint8_t digit_minutes		= 0;
-volatile uint8_t digit_dec_hours	= 0;
-volatile uint8_t digit_hours		= 0;
+volatile uint8_t dec_minutes	= 0;
+volatile uint8_t minutes		= 0;
+volatile uint8_t dec_hours	= 0;
+volatile uint8_t hours		= 0;
 
 
 
@@ -65,7 +65,7 @@ uint8_t convert(uint8_t digit) {
 
 //volatile uint8_t interrupt = 0;
 
-/*
+
 void get_clock(void) {
 	i2c_start_wait(0xD0);					// set device address and write mode
 	i2c_write(0x01); 						// write "read from" byte
@@ -75,12 +75,13 @@ void get_clock(void) {
 	hours_register		= i2c_readNak(); 	// Read second byte and send END
 	i2c_stop();
 	
-	digit_dec_minutes	= (minutes_register >> 4) & B0111;
-	digit_minutes		= minutes_register & B00001111;
-	digit_dec_hours		= (hours_register >> 4) & B1;
-	digit_hours			= hours_register & B00001111;
+	dec_minutes		= (minutes_register >> 4) & B111;
+	minutes			= minutes_register & B1111;
+	dec_hours		= (hours_register >> 4) & B1;
+	hours			= hours_register & B1111;
 }
-*/
+
+
 //ISR(TIMER0_OVF_vect) {
 		/*	We can read the clock directly in the interrupt
 			as it is being executed every 26 sec
@@ -96,7 +97,7 @@ void get_clock(void) {
 
 int main(void) {
 	//clock_prescale_set(clock_div_16); //8MHz/16 = 500KHz
-	//i2c_init();
+	i2c_init();
 	
 	BIT_SET(ACSR,ACD);					// Disable Analog Comparator
 	BIT_CLEAR(ADCSRB, ADEN);			// Disable Analog to Digital Converter
@@ -124,7 +125,20 @@ int main(void) {
 */
 	
 	
+	
+	
 	while(1) {
+		get_clock();
+		if(minutes != 0) {
+			for(int i=0; i<minutes; i++) {
+				PORTC = B11111111;
+				_delay_ms(500);
+				PORTC = B00000000;
+				_delay_ms(500);
+			}
+		}
+		
+		_delay_ms(3000);
 	
 	}
 }
