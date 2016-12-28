@@ -1,1 +1,1 @@
-<Project name="At88_DS3231"><File path="binary.h"></File><File path="i2cmaster.h"></File><File path="i2cmaster.S"></File><File path="main.c"></File><File path="makefile"></File></Project>
+<Project name="At88_DS3231"><File path="binary.h"></File><File path="i2cmaster.h"></File><File path="i2cmaster.S"></File><File path="main.c"></File><File path="makefile"></File><File path="digits.c"></File><File path="digits.h"></File></Project>

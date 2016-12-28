@@ -23,7 +23,7 @@
 #include <util/delay.h>
 #include "i2cmaster.h"
 #include "binary.h"
-
+#include "digits.h"
 
 /*
 For using i2cmaster library the i2c_address must be:
@@ -34,13 +34,13 @@ X-X-X-X-X-X-X-D
 */
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
-#define BIT_CLEAR(a,b) ((a) &= ~(1<<(b)))
+#define BIT_CLE(a,b) ((a) &= ~(1<<(b)))
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
 #define BIT_CHECK(a,b) ((a) & (1<<(b)))
 
 
-#define FIRST_ON	((PORTA) |= (1<<(PA1)))
-#define FIRST_OFF	((PORTA) &= ~(1<<(PA1)))
+
+
 
 
 volatile uint8_t minutes_register	= 0;
@@ -97,10 +97,10 @@ void get_clock(void) {
 
 int main(void) {
 	//clock_prescale_set(clock_div_16); //8MHz/16 = 500KHz
-	i2c_init();
+	//i2c_init();
 	
-	BIT_SET(ACSR,ACD);					// Disable Analog Comparator
-	BIT_CLEAR(ADCSRB, ADEN);			// Disable Analog to Digital Converter
+	BIT_SET(ACSR, ACD);					// Disable Analog Comparator
+	BIT_CLE(ADCSRB, ADEN);			// Disable Analog to Digital Converter
 	
 	// PORT DIRECTIONS 0 INPUT 1 OUTPUT
 	DDRA = B11111011;
@@ -109,6 +109,7 @@ int main(void) {
 	DDRD = B11100111;
 	
 	// PORT STATE 0 LOW 1 HIGH
+	
 	PORTA = B00000000;
 	PORTB = B00000000;
 	PORTC = B00000000;
@@ -128,6 +129,14 @@ int main(void) {
 	
 	
 	while(1) {
+	for(uint8_t i=0; i<10; i++) {
+		set_digit_1(i); 
+		set_digit_2(i); 
+		set_digit_3(i); 
+		set_digit_4(i);
+		_delay_ms(3000); 
+	}
+		/*
 		get_clock();
 		if(minutes != 0) {
 			for(int i=0; i<minutes; i++) {
@@ -137,8 +146,8 @@ int main(void) {
 				_delay_ms(500);
 			}
 		}
+	*/	
 		
-		_delay_ms(3000);
 	
 	}
 }
