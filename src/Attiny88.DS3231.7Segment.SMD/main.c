@@ -38,14 +38,38 @@ X-X-X-X-X-X-X-D
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
 #define BIT_CHECK(a,b) ((a) & (1<<(b)))
 
-
-
-
-
-
 volatile uint8_t minutes_register	= 0;
 volatile uint8_t hours_register		= 0;
 
+uint8_t dec_do_bcd(uint8_t val) {
+	return ( (val/10*16) + (val%10) );
+}
+
+uint8_t bcd_to_dec(uint8_t val) {
+	return ( (val/16*10) + (val%16) );
+}
+
+
+void set_12h_format(void) {
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x02); 						// write "write to" byte
+	i2c_write(0x40);  						// set 12H format
+	i2c_stop(); 
+}
+
+void set_minutes(uint8_t minute) {
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x01); 						// write "write to" byte
+	i2c_write(dec_do_bcd(minute));  		// set minute converting from decimal to BCD
+	i2c_stop(); 
+}
+
+void set_hours(uint8_t hours) {
+	i2c_start_wait(0xD0);						// set device address and WRITE mode
+	i2c_write(0x02); 							// write "write to" byte
+	i2c_write(dec_do_bcd(hours) | 0b01000000);	// set hours without loosing 12H format
+	i2c_stop(); 
+}
 
 void get_clock(void) {
 	i2c_start_wait(0xD0);					// set device address and write mode
@@ -73,16 +97,30 @@ ISR(TIMER0_OVF_vect) {
 
 
 ISR(INT1_vect) {
-	set_digit_1(1); 
-	set_digit_2(0); 
-	set_digit_3(0); 
-	set_digit_4(0);
+	get_clock();
+	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
+	uint8_t minute	= bcd_to_dec(minutes_register);
+	
+	if(minute>=59) {
+		minute=0;
+		if(hour >= 12) {
+			hour = 1;
+		} else {
+			++hour;
+		}
+		set_hours(hour);
+	} else {
+		++minute;
+	}
+	set_minutes(minute);
+	get_clock();
 }
 
 
 int main(void) {
-	clock_prescale_set(clock_div_256); // 8MHz/256 = 31250Hz
+	clock_prescale_set(clock_div_256);	// 8MHz/256 = 31250Hz
 	i2c_init();
+	set_12h_format(); 					//This will also clear hour register
 	
 	BIT_SET(ACSR, ACD);					// Disable Analog Comparator
 	BIT_CLE(ADCSRB, ADEN);				// Disable Analog to Digital Converter
