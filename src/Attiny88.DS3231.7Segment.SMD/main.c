@@ -3,8 +3,8 @@
 	(c) Ruslan Mikhaylenko 27.12.2016 mirusnet@gmail.com
 */
 
-//#define F_CPU 31250
-#define F_CPU 1000000
+#define F_CPU 31250
+//#define F_CPU 1000000
 /*	by Default: F_CPU = 8000000Mhz / 8(divider by fuses) = 1000000. 
 	Should be defined before delay.h
 	In this case F_CPU=31250 because of clock_prescale_set(clock_div_256); 8Mhz/256
@@ -46,25 +46,6 @@ X-X-X-X-X-X-X-D
 volatile uint8_t minutes_register	= 0;
 volatile uint8_t hours_register		= 0;
 
-volatile uint8_t dec_minutes	= 0;
-volatile uint8_t minutes		= 0;
-volatile uint8_t dec_hours	= 0;
-volatile uint8_t hours		= 0;
-
-
-
-/*
-uint8_t convert(uint8_t digit) {
-	switch (digit) {
-        case 1: return DIGIT_ONE; 	break;
-        case 0: return DIGIT_ZERO;  break;
-	    default: return DIGIT_ALL_DISABLE;
-    }
-}
-*/
-
-//volatile uint8_t interrupt = 0;
-
 
 void get_clock(void) {
 	i2c_start_wait(0xD0);					// set device address and write mode
@@ -75,32 +56,36 @@ void get_clock(void) {
 	hours_register		= i2c_readNak(); 	// Read second byte and send END
 	i2c_stop();
 	
-	dec_minutes		= (minutes_register >> 4) & B111;
-	minutes			= minutes_register & B1111;
-	dec_hours		= (hours_register >> 4) & B1;
-	hours			= hours_register & B1111;
+	set_digit_1((hours_register >> 4) & B1); 
+	set_digit_2(hours_register & B1111); 
+	set_digit_3((minutes_register >> 4) & B111); 
+	set_digit_4(minutes_register & B1111);
 }
 
 
-//ISR(TIMER0_OVF_vect) {
+ISR(TIMER0_OVF_vect) {
 		/*	We can read the clock directly in the interrupt
-			as it is being executed every 26 sec
+			as it is being executed every 8 sec
 			and we dont have any other interrupt in place
 		*/
-//		get_clock(); 
-//}
+		get_clock(); 
+}
 
 
-
-
+ISR(INT1_vect) {
+	set_digit_1(1); 
+	set_digit_2(0); 
+	set_digit_3(0); 
+	set_digit_4(0);
+}
 
 
 int main(void) {
-	//clock_prescale_set(clock_div_16); //8MHz/16 = 500KHz
-	//i2c_init();
+	clock_prescale_set(clock_div_256); // 8MHz/256 = 31250Hz
+	i2c_init();
 	
 	BIT_SET(ACSR, ACD);					// Disable Analog Comparator
-	BIT_CLE(ADCSRB, ADEN);			// Disable Analog to Digital Converter
+	BIT_CLE(ADCSRB, ADEN);				// Disable Analog to Digital Converter
 	
 	// PORT DIRECTIONS 0 INPUT 1 OUTPUT
 	DDRA = B11111011;
@@ -109,45 +94,22 @@ int main(void) {
 	DDRD = B11100111;
 	
 	// PORT STATE 0 LOW 1 HIGH
-	
 	PORTA = B00000000;
 	PORTB = B00000000;
 	PORTC = B00000000;
 	PORTD = B00001000; // Internal pull up res on PD3 for INT1 button
 	
-	
-	
-	/*
-	//8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
-	TIMSK	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
-	TCCR0B	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024 prescaler
+	// ENABLE INT1 interrupt
+	EICRA&=~((1<<ISC11)|(1<<ISC10));	// Set LOW LEVEL interrupt
+	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
+
+	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
+	TIMSK0	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
+	TCCR0A	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024 prescaler
 	TCNT0	= 0x00; 		 		 // Zero timer (start it)
 	sei(); 				 			 // Enable global interrupts
-*/
-	
-	
-	
+
 	
 	while(1) {
-	for(uint8_t i=0; i<10; i++) {
-		set_digit_1(i); 
-		set_digit_2(i); 
-		set_digit_3(i); 
-		set_digit_4(i);
-		_delay_ms(3000); 
-	}
-		/*
-		get_clock();
-		if(minutes != 0) {
-			for(int i=0; i<minutes; i++) {
-				PORTC = B11111111;
-				_delay_ms(500);
-				PORTC = B00000000;
-				_delay_ms(500);
-			}
-		}
-	*/	
-		
-	
 	}
 }
