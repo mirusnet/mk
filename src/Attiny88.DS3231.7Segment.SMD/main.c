@@ -87,15 +87,17 @@ void get_clock(void) {
 }
 
 
+
+/*	Getting time from DS3231 clock
+	We can read the clock directly in the interrupt
+	as it is being executed every 8 sec
+*/
 ISR(TIMER0_OVF_vect) {
-		/*	We can read the clock directly in the interrupt
-			as it is being executed every 8 sec
-			and we dont have any other interrupt in place
-		*/
-		get_clock(); 
+	get_clock(); 
 }
 
 
+/*	Button processing by INT1 interrupt (PD3 pin low state) */
 ISR(INT1_vect) {
 	get_clock();
 	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
@@ -113,7 +115,7 @@ ISR(INT1_vect) {
 		++minute;
 	}
 	set_minutes(minute);
-	get_clock();
+	get_clock(); 
 }
 
 
