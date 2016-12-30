@@ -3,8 +3,8 @@
 	(c) Ruslan Mikhaylenko 27.12.2016 mirusnet@gmail.com
 */
 
-#define F_CPU 31250
-//#define F_CPU 1000000
+//#define F_CPU 31250
+#define F_CPU 1000000
 /*	by Default: F_CPU = 8000000Mhz / 8(divider by fuses) = 1000000. 
 	Should be defined before delay.h
 	In this case F_CPU=31250 because of clock_prescale_set(clock_div_256); 8Mhz/256
@@ -100,10 +100,17 @@ ISR(TIMER0_OVF_vect) {
 }
 */
 
+
+ISR(WDT_vect) {
+	get_clock();
+	WDTCSR |= (1<<WDIE);
+}
+
+
 /*	Button processing by INT1 interrupt (PD3 pin low state) */
 ISR(INT1_vect) {
 	get_clock();
-	/*
+	
 	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
 	uint8_t minute	= bcd_to_dec(minutes_register);
 	
@@ -119,12 +126,13 @@ ISR(INT1_vect) {
 		++minute;
 	}
 	set_minutes(minute);
-	get_clock(); */
+	get_clock(); 
 }
 
 
 int main(void) {
-	clock_prescale_set(clock_div_256);	// 8MHz/256 = 31250Hz
+	//clock_prescale_set(clock_div_256);	// 8MHz/256 = 31250Hz
+	
 	i2c_init();
 	set_12h_format(); 					//This will also clear hour register
 	
@@ -142,22 +150,25 @@ int main(void) {
 	PORTB = B00000000;
 	PORTC = B00000000;
 	PORTD = B00001000; // Internal pull up res on PD3 for INT1 button
-	
+
 	// ENABLE INT1 interrupt
 	EICRA&=~((1<<ISC11)|(1<<ISC10));	// Set LOW LEVEL interrupt
 	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
 
-	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
+	
 	/*
+	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
 	TIMSK0	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
 	TCCR0A	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024 prescaler
 	TCNT0	= 0x00; 		 		 // Zero timer (start it)
 	*/
-	
-	
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
-	sei();									// Enable global interrupts
 
+	wdt_reset();
+	wdt_enable(WDTO_8S);
+	WDTCSR |= (1<<WDIE);
+
+	//set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
+	sei();									// Enable global interrupts
 	
 	while(1) {
 		cli();					// Disable Interrupts
