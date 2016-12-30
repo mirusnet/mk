@@ -20,6 +20,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/power.h>
+#include <avr/sleep.h>
+#include <avr/wdt.h>
 #include <util/delay.h>
 #include "i2cmaster.h"
 #include "binary.h"
@@ -92,14 +94,16 @@ void get_clock(void) {
 	We can read the clock directly in the interrupt
 	as it is being executed every 8 sec
 */
+/*
 ISR(TIMER0_OVF_vect) {
 	get_clock(); 
 }
-
+*/
 
 /*	Button processing by INT1 interrupt (PD3 pin low state) */
 ISR(INT1_vect) {
 	get_clock();
+	/*
 	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
 	uint8_t minute	= bcd_to_dec(minutes_register);
 	
@@ -115,7 +119,7 @@ ISR(INT1_vect) {
 		++minute;
 	}
 	set_minutes(minute);
-	get_clock(); 
+	get_clock(); */
 }
 
 
@@ -144,12 +148,23 @@ int main(void) {
 	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
 
 	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
+	/*
 	TIMSK0	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
 	TCCR0A	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024 prescaler
 	TCNT0	= 0x00; 		 		 // Zero timer (start it)
-	sei(); 				 			 // Enable global interrupts
+	*/
+	
+	
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
+	sei();									// Enable global interrupts
 
 	
 	while(1) {
+		cli();					// Disable Interrupts
+		sleep_enable();			// Enable Sleep Mode  
+		sleep_bod_disable();	// Disable the Brown Out Detector (during sleep)
+		sei();					// Enable Interrupts
+		sleep_cpu();			// Go to Sleep
+		sleep_disable();		// Entrance point
 	}
 }
