@@ -101,6 +101,13 @@ uint8_t convert(uint8_t digit) {
 
 volatile uint8_t interrupt = 0;
 
+void set_seconds(uint8_t second) {
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x00); 						// write "write to" byte
+	i2c_write(dec_do_bcd(second));  		// set minute converting from decimal to BCD
+	i2c_stop(); 
+}
+
 void set_minutes(uint8_t minute) {
 	i2c_start_wait(0xD0);					// set device address and WRITE mode
 	i2c_write(0x01); 						// write "write to" byte
@@ -150,6 +157,7 @@ void adjust_clock(void) {
 	} else {
 		++minute;
 	}
+	set_seconds(0); // let zero seconds as well
 	set_minutes(minute);
 	get_clock(); 
 }
@@ -157,7 +165,6 @@ void adjust_clock(void) {
 
 ISR(TIMER0_OVF_vect) {
 	interrupt++;
-	
 	if(interrupt > 100) {
 		interrupt=0;
 		/*	We can read the clock directly in the interrupt
@@ -174,7 +181,7 @@ ISR(TIMER0_OVF_vect) {
 
 
 int main(void) {
-	//clock_prescale_set(clock_div_16); //8MHz/16 = 500KHz
+	//clock_prescale_set(clock_div_256); //8MHz/16 = 500KHz
 	i2c_init();
 	
 	ACSR|=(1<<ACD);					//Disable Analog Comparator
@@ -197,7 +204,7 @@ int main(void) {
 	while(1) {
 		if( ! BIT_CHECK(PIND,PD6) ) {
 			adjust_clock();
-			_delay_ms(100);
+			_delay_ms(200);
 		}	
 	
 		if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
