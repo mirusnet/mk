@@ -63,6 +63,15 @@ X-X-X-X-X-X-X-D
 #define DIGIT_ALL_DISABLE	0xFF
 #define DIGIT_ALL_ENABLE	0x00
 
+uint8_t dec_do_bcd(uint8_t val) {
+	return ( (val/10*16) + (val%10) );
+}
+
+uint8_t bcd_to_dec(uint8_t val) {
+	return ( (val/16*10) + (val%16) );
+}
+
+
 volatile uint8_t minutes_register	= 0;
 volatile uint8_t hours_register		= 0;
 
@@ -92,6 +101,21 @@ uint8_t convert(uint8_t digit) {
 
 volatile uint8_t interrupt = 0;
 
+void set_minutes(uint8_t minute) {
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x01); 						// write "write to" byte
+	i2c_write(dec_do_bcd(minute));  		// set minute converting from decimal to BCD
+	i2c_stop(); 
+}
+
+void set_hours(uint8_t hours) {
+	i2c_start_wait(0xD0);						// set device address and WRITE mode
+	i2c_write(0x02); 							// write "write to" byte
+	i2c_write(dec_do_bcd(hours) | 0b01000000);	// set hours without loosing 12H format
+	i2c_stop(); 
+}
+
+
 void get_clock(void) {
 	i2c_start_wait(0xD0);					// set device address and write mode
 	i2c_write(0x01); 						// write "read from" byte
@@ -107,6 +131,29 @@ void get_clock(void) {
 	digit_hours			= convert(hours_register & B00001111);
 	BIT_CLEAR(digit_hours, PB5); 			// enable dot segment
 }
+
+/*	Button processing */
+void adjust_clock(void) {
+	get_clock();
+	
+	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
+	uint8_t minute	= bcd_to_dec(minutes_register);
+	
+	if(minute>=59) {
+		minute=0;
+		if(hour >= 12) {
+			hour = 1;
+		} else {
+			++hour;
+		}
+		set_hours(hour);
+	} else {
+		++minute;
+	}
+	set_minutes(minute);
+	get_clock(); 
+}
+
 
 ISR(TIMER0_OVF_vect) {
 	interrupt++;
@@ -134,8 +181,10 @@ int main(void) {
  
 	DDRB = 0xFF; 					//Set all pins of PORTB as output
 	DDRD = (1<<PD2) | (1<<PD1);		//DIGITS ANODE:	PD2=>3 PD1=>4
+	BIT_CLEAR(DDRD, PD6);			//Input pin for button 
 	DDRA = (1<<PA0) | (1<<PA1);		//DIGITS ANODE:	PA0=>2 PA1=>1
 	PORTB = 0x00;					//Ground all segments (TURN ON).
+	BIT_SET(PORTD, PD6);			//Pull up res for input pin 
 	
 	//8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
 	TIMSK	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
@@ -146,6 +195,11 @@ int main(void) {
 	
 	
 	while(1) {
+		if( ! BIT_CHECK(PIND,PD6) ) {
+			adjust_clock();
+			_delay_ms(100);
+		}	
+	
 		if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
 			PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
 		}
