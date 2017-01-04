@@ -34,10 +34,6 @@
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
 #define BIT_CHECK(a,b) ((a) & (1<<(b)))
 
-volatile uint8_t minutes_register	= 0;
-volatile uint8_t hours_register		= 0;
-
-
 
 /*
 ISR(TIMER0_OVF_vect) {
@@ -46,6 +42,14 @@ ISR(TIMER0_OVF_vect) {
 */
 
 void refresh(void) {
+	uint16_t minutes_hours = get_clock();
+		
+	uint8_t hhours_register = minutes_hours & 0x00FF;
+	uint8_t minutes_register = ((minutes_hours & 0xFF00)>>8);
+	
+	uint8_t hours_register = (hhours_register & 0b00011111);
+	//uint8_t minutes_register = (minutes_hours>>8);
+	
 	set_digit_1((hours_register >> 4) & B1); 
 	set_digit_2(hours_register & B1111); 
 	set_digit_3((minutes_register >> 4) & B111); 
@@ -53,7 +57,6 @@ void refresh(void) {
 }
 
 ISR(WDT_vect) {
-	get_clock((uint8_t *)&minutes_register, (uint8_t *)&hours_register);
 	refresh();
 	WDTCSR |= (1<<WDIE);
 }
@@ -61,9 +64,7 @@ ISR(WDT_vect) {
 
 /*	Button processing by INT1 interrupt (PD3 pin low state) */
 ISR(INT1_vect) {
-	get_clock((uint8_t *) &minutes_register, (uint8_t *) &hours_register);
-	adjust_clock(minutes_register, hours_register);
-	get_clock((uint8_t *) &minutes_register, (uint8_t *) &hours_register);
+	adjust_clock();
 	refresh();
 }
 
@@ -72,7 +73,7 @@ int main(void) {
 	//clock_prescale_set(clock_div_256);	// 8MHz/256 = 31250Hz
 	
 	i2c_init();
-	set_12h_format(); 					//This will also clear hour register
+	//set_12h_format(); 					//This will also clear hour register
 	
 	BIT_SET(ACSR, ACD);					// Disable Analog Comparator
 	BIT_CLE(ADCSRB, ADEN);				// Disable Analog to Digital Converter
