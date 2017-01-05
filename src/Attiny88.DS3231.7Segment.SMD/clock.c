@@ -46,6 +46,12 @@ void set_hours(uint8_t hours) {
 	i2c_stop(); 
 }
 
+
+/*
+	get_clock returns two bytes of data, minutes and hours (mmhh)
+	mmhh format: 0 0 0 0 DM DM DM M M M M DH H H H H
+	DM Decimal Minutes, M Minutes, DH Decimal Hours, H Hours
+*/
 uint16_t get_clock(void) {
 	uint16_t minutes_hours = 0;
 	i2c_start_wait(0xD0);					// set device address and write mode

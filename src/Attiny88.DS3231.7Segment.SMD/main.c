@@ -42,18 +42,7 @@ ISR(TIMER0_OVF_vect) {
 */
 
 void refresh(void) {
-	uint16_t minutes_hours = get_clock();
-		
-	uint8_t hhours_register = minutes_hours & 0x00FF;
-	uint8_t minutes_register = ((minutes_hours & 0xFF00)>>8);
-	
-	uint8_t hours_register = (hhours_register & 0b00011111);
-	//uint8_t minutes_register = (minutes_hours>>8);
-	
-	set_digit_1((hours_register >> 4) & B1); 
-	set_digit_2(hours_register & B1111); 
-	set_digit_3((minutes_register >> 4) & B111); 
-	set_digit_4(minutes_register & B1111);
+	set_all_digits(get_clock());
 }
 
 ISR(WDT_vect) {
@@ -66,6 +55,7 @@ ISR(WDT_vect) {
 ISR(INT1_vect) {
 	adjust_clock();
 	refresh();
+	_delay_ms(150);
 }
 
 
@@ -102,9 +92,9 @@ int main(void) {
 	TCNT0	= 0x00; 		 		 // Zero timer (start it)
 	*/
 
-	wdt_reset();
-	wdt_enable(WDTO_8S);
-	WDTCSR |= (1<<WDIE);
+	wdt_reset();					// Reset watch dog timer
+	wdt_enable(WDTO_8S);			// Set watch dog to run every 8 seconds
+	WDTCSR |= (1<<WDIE);			// Set watch dog action to fire interrupt instead of reset
 
 	//set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
 	sei();									// Enable global interrupts

@@ -263,6 +263,7 @@ switch (digit) {
 			BIT_CLE(S3G_PORT, S3G_PIN);
     }
 }
+
 void set_digit_2(uint8_t digit) {
 switch (digit) {
         case 0: 
@@ -365,6 +366,7 @@ switch (digit) {
 			BIT_CLE(S2G_PORT, S2G_PIN);
     }
 }
+
 void set_digit_1(uint8_t digit) {
 if(digit == 1) {
 	BIT_CLE(PORTD, PD1);
@@ -375,3 +377,13 @@ if(digit == 1) {
 	}
 }
 
+/*
+	set_all_digits parses two bytes of data returned by ds3231 from minutes and hours registers 
+	and set digits accordingly
+*/
+void set_all_digits(uint16_t mmhh) {
+	set_digit_1((mmhh&0x10)>>4); 
+	set_digit_2(mmhh&0xF); 
+	set_digit_3((mmhh>>12)&0x7); 
+	set_digit_4((mmhh>>8)&0xF);
+}

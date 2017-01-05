@@ -5,4 +5,6 @@ void set_digit_1(uint8_t digit);
 void set_digit_2(uint8_t digit);
 void set_digit_3(uint8_t digit);
 void set_digit_4(uint8_t digit);
+
+void set_all_digits(uint16_t mmhh);
 #endif
