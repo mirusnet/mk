@@ -1,0 +1,22 @@
+To use current hex program you should use DS3231-ATTINY2313_DIP-generalButton.lay6.
+
+Better approach is to revrite the programm to use an interrupt INT1(PD3) and use DS3231-ATTINY2313_DIP-interruptButton.lay6 
+
+
+
+As an example (for Attiny88):
+
+
+ISR(INT1_vect) {
+	adjust_clock();
+	refresh();
+	_delay_ms(150);
+}
+
+
+	DDRD = B11100111;
+	PORTD = B00001000; // Internal pull up res on PD3 for INT1 button
+
+	// ENABLE INT1 interrupt
+	EICRA&=~((1<<ISC11)|(1<<ISC10));			// Set LOW LEVEL interrupt
+	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
