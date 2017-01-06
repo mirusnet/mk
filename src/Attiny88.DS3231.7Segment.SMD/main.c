@@ -50,7 +50,6 @@ ISR(WDT_vect) {
 	WDTCSR |= (1<<WDIE);
 }
 
-
 /*	Button processing by INT1 interrupt (PD3 pin low state) */
 ISR(INT1_vect) {
 	adjust_clock();
@@ -84,27 +83,26 @@ int main(void) {
 	EICRA&=~((1<<ISC11)|(1<<ISC10));	// Set LOW LEVEL interrupt
 	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
 
-	
 	/*
 	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
-	TIMSK0	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
-	TCCR0A	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024 prescaler
-	TCNT0	= 0x00; 		 		 // Zero timer (start it)
+	TIMSK0	= 1<<TOIE0;				 	// Enable overflow interrupt by timer T0
+	TCCR0A	= (1<<CS00) | (1<<CS02); 	// Set up timer at F_CPU/1024 prescaler
+	TCNT0	= 0x00; 		 		 	// Zero timer (start it)
 	*/
 
-	wdt_reset();					// Reset watch dog timer
-	wdt_enable(WDTO_8S);			// Set watch dog to run every 8 seconds
-	WDTCSR |= (1<<WDIE);			// Set watch dog action to fire interrupt instead of reset
+	wdt_reset();						// Reset watch dog timer
+	wdt_enable(WDTO_8S);				// Set watch dog to run every 8 seconds
+	WDTCSR |= (1<<WDIE);				// Set watch dog action to fire interrupt instead of reset
 
 	//set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
 	sei();									// Enable global interrupts
 	
 	while(1) {
-		cli();					// Disable Interrupts
-		sleep_enable();			// Enable Sleep Mode  
-		sleep_bod_disable();	// Disable the Brown Out Detector (during sleep)
-		sei();					// Enable Interrupts
-		sleep_cpu();			// Go to Sleep
-		sleep_disable();		// Entrance point
+		cli();							// Disable Interrupts
+		sleep_enable();					// Enable Sleep Mode  
+		sleep_bod_disable();			// Disable the Brown Out Detector (during sleep)
+		sei();							// Enable Interrupts
+		sleep_cpu();					// Go to Sleep
+		sleep_disable();				// Entrance point
 	}
 }
