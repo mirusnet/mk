@@ -7,4 +7,6 @@
 **/*.sym
 **/.dep
 *~
+**/info
+**/windows_soft
 
