@@ -13,4 +13,5 @@
 **/*.componentinfo.xml
 **/*.cproj
 **/Debug
+**/Release
 **/*.vs            

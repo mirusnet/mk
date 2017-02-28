@@ -8,6 +8,8 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
+#include "i2cmaster.h"
 
 
 #define BIT_SET(a,b) ((a) |= (1<<(b)))
@@ -62,8 +64,8 @@ int main(void)
 	DDRB	= 0xFF; 							// Set all pins of PORTB as output
 	PORTB	= 0x00;								// Ground all segments (TURN ON).
 	
-	DDRD = (1<<PD5) | (1<<PD6) | (1<<PD7);		// DIGITS ANODE:	PD5=>3 PD6=>2 PD7=>1
-	DDRA = (1<<PA3);							// DIGITS ANODE:	PA3=>4
+	DDRD = (1<<PD5) | (1<<PD6) | (1<<PD7);		// DIGITS ANODE (set as output):	PD5=>3 PD6=>2 PD7=>1
+	DDRA = (1<<PA3);							// DIGITS ANODE (set as output):	PA3=>4
 	
 	BIT_CLE(DDRD, PD6);							// Input pin for button
 	BIT_SET(PORTD, PD6);						// Pull up res for input pin
@@ -74,9 +76,14 @@ int main(void)
 	TCNT0	= 0x00; 		 		 	// Zero timer (start it)
 	
 
-    /* Replace with your application code */
-    while (1) 
-    {
-    }
+	while(1) {
+		PORTB = digit;  	
+	 
+	   	FIRST_ON;	_delay_ms(5);	FIRST_OFF;
+	   	SECOND_ON;	_delay_ms(5);	SECOND_OFF;
+	   	THIRD_ON;	_delay_ms(5);	THIRD_OFF;
+	   	FOUR_ON;	_delay_ms(5);	FOUR_OFF;
+   	}
+
 }
 
