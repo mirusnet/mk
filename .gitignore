@@ -9,4 +9,8 @@
 *~
 **/info
 **/windows_soft
-
+**/*.atsln            
+**/*.componentinfo.xml
+**/*.cproj
+**/Debug
+**/*.vs            
