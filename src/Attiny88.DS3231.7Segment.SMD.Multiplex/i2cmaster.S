@@ -40,10 +40,10 @@
 
 ;***** Adapt these SCA and SCL port and pin definition to your target !!
 ;
-#define SDA     	2					// SDA Port A, PA2   
-#define SCL			4					// SCL Port D, PD4
-#define SDA_PORT        PORTA           // SDA Port A
-#define SCL_PORT        PORTD           // SCL Port D         
+#define SDA     	4					// SDA Port D, PD4   
+#define SCL			2					// SCL Port A, PA2
+#define SDA_PORT        PORTD           // SDA Port D
+#define SCL_PORT        PORTA           // SCL Port A         
 
 ;******
 

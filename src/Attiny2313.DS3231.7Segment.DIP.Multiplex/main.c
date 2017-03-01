@@ -88,13 +88,13 @@ uint8_t convert(uint8_t digit) {
         case 2: return DIGIT_TWO; 	break;
         case 3: return DIGIT_THREE; break;
         case 4: return DIGIT_FOUR;  break;
-		case 5: return DIGIT_FIVE;  break;
+	case 5: return DIGIT_FIVE;  break;
         case 6: return DIGIT_SIX;   break;
         case 7: return DIGIT_SEVEN; break;
         case 8: return DIGIT_EIGHT; break;
-		case 9: return DIGIT_NINE;  break;
+	case 9: return DIGIT_NINE;  break;
         case 0: return DIGIT_ZERO;  break;
-	    default: return DIGIT_ALL_DISABLE;
+        default: return DIGIT_ALL_DISABLE;
     }
 }
 
