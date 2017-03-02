@@ -174,11 +174,11 @@ ISR(TIMER0_OVF_vect) {
 
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD3 pin low state)				*/
-/*	This will turn on LEFT LED LIGHT									*/           
+/*	This will turn on LEFT LED FLASH LIGHT									*/           
 /************************************************************************/
 ISR(INT1_vect) {
 	BIT_FLIP(PORTC, PINC1);
-	_delay_ms(200);
+	_delay_ms(300);
 }
 
 volatile bool sleep = false;
@@ -188,17 +188,29 @@ volatile bool sleep = false;
 /************************************************************************/
 ISR(INT0_vect) {
 	sleep = (sleep == true) ? false : true;
-	
-	if(sleep) {
-		BIT_SET(PORTC, PC0);
-	} else {
-		BIT_CLE(PORTC, PC0);
-	}
-	//BIT_FLIP(PORTC, PINC0);
-	_delay_ms(200);
+	sleep ? BIT_SET(PORTC, PC0) : BIT_CLE(PORTC, PC0);
+	_delay_ms(300);
 }
 
+void display_disable() {
+	FIRST_OFF; 	SECOND_OFF; THIRD_OFF; FOUR_OFF;
+}
 
+void check_and_adjust_clock() {
+	if( ! BIT_CHECK(PINC,PINC2) ) {
+		adjust_clock();
+		_delay_ms(200);
+	}
+}
+
+void display_time() {
+	if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
+		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(1000);	FIRST_OFF;
+	}
+		PORTB = digit_hours;			SECOND_ON;	_delay_ms(1000);	SECOND_OFF;
+		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(1000);	THIRD_OFF;
+		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(1000);	FOUR_OFF;
+}
 
 int main(void)
 {
@@ -219,7 +231,7 @@ int main(void)
 	BIT_SET(DDRC, PINC1);							// Set RIGHT LED PIN as output
 	
 	//BIT_CLE(DDRD, PD6);							// Input pin for button
-	//BIT_SET(PORTD, PD6);						// Pull up res for input pin
+	//BIT_SET(PORTD, PD6);							// Pull up res for input pin
 
 	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
 	TIMSK0	= 1<<TOIE0;				 	// Enable overflow interrupt by timer T0
@@ -244,35 +256,21 @@ int main(void)
 	//BIT_SET(PORTC, PC0);
 	
 	while(1) {
+		check_and_adjust_clock();
+
 		if(sleep) {
-			FIRST_OFF;
-			SECOND_OFF;
-			THIRD_OFF;
-			FOUR_OFF;
+			display_disable();
 
-			cli();							// Disable Interrupts
-			sleep_enable();					// Enable Sleep Mode
-			set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
-			sleep_bod_disable();			// Disable the Brown Out Detector (during sleep)
-			sei();							// Enable Interrupts
-			sleep_cpu();					// Go to Sleep
-			sleep_disable();				// Entrance point
+			cli();								// Disable Interrupts
+			sleep_enable();						// Enable Sleep Mode
+			set_sleep_mode(SLEEP_MODE_PWR_DOWN);// Set Sleep Mode
+			sleep_bod_disable();				// Disable the Brown Out Detector (during sleep)
+			sei();								// Enable Interrupts
+			sleep_cpu();						// Go to Sleep
+			sleep_disable();					// Entrance point
+		} else {
+			display_time();
 		}		
-	
-		if( ! BIT_CHECK(PINC,PINC2) ) {
-			adjust_clock();
-			_delay_ms(200);
-		}
-	
-		if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
-			PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(500);	FIRST_OFF;
-		}
-
-		PORTB = digit_hours;			SECOND_ON;	_delay_ms(500);	SECOND_OFF;
-		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(500);	THIRD_OFF;
-		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(500);	FOUR_OFF;
 	}
-
-
 }
 
