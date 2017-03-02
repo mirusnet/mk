@@ -188,7 +188,7 @@ volatile bool sleep = false;
 /************************************************************************/
 ISR(INT0_vect) {
 	sleep = (sleep == true) ? false : true;
-	sleep ? BIT_SET(PORTC, PC0) : BIT_CLE(PORTC, PC0);
+	sleep ? BIT_SET(PORTC, PINC0) : BIT_CLE(PORTC, PINC0);
 	_delay_ms(300);
 }
 
