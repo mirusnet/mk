@@ -9,6 +9,10 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <avr/power.h>
+#include <avr/sleep.h>
+#include <stdbool.h>
+
 #include "i2cmaster.h"
 #include "binary.h"
 
@@ -17,14 +21,14 @@
 #define BIT_FLIP(a,b) ((a) ^= (1<<(b)))
 #define BIT_CHECK(a,b) ((a) & (1<<(b)))
 
-#define FIRST_ON	((PORTD) |= (1<<(PD7)))
-#define FIRST_OFF	((PORTD) &= ~(1<<(PD7)))
-#define SECOND_ON	((PORTD) |= (1<<(PD6)))
-#define SECOND_OFF	((PORTD) &= ~(1<<(PD6)))
-#define THIRD_ON	((PORTD) |= (1<<(PD5)))
-#define THIRD_OFF	((PORTD) &= ~(1<<(PD5)))
-#define FOUR_ON		((PORTA) |= (1<<(PA3)))
-#define FOUR_OFF	((PORTA) &= ~(1<<(PA3)))
+#define FIRST_ON	((PORTD) |= (1<<(PIND7)))
+#define FIRST_OFF	((PORTD) &= ~(1<<(PIND7)))
+#define SECOND_ON	((PORTD) |= (1<<(PIND6)))
+#define SECOND_OFF	((PORTD) &= ~(1<<(PIND6)))
+#define THIRD_ON	((PORTD) |= (1<<(PIND5)))
+#define THIRD_OFF	((PORTD) &= ~(1<<(PIND5)))
+#define FOUR_ON		((PORTA) |= (1<<(PINA3)))
+#define FOUR_OFF	((PORTA) &= ~(1<<(PINA3)))
 
 #define DIGIT_ONE 			0x7B
 #define DIGIT_TWO			0x4C
@@ -120,7 +124,7 @@ void get_clock(void) {
 	digit_minutes		= convert(minutes_register & B00001111);
 	digit_dec_hours		= convert((hours_register >> 4) & B1);
 	digit_hours			= convert(hours_register & B00001111);
-	BIT_CLE(digit_hours, PB3); 				// enable dot segment
+	BIT_CLE(digit_hours, PINB3); 				// enable dot segment
 }
 
 /*	Button processing */
@@ -154,12 +158,15 @@ void adjust_clock(void) {
 
 
 
-volatile uint8_t interrupt = 0;
-
+volatile uint8_t timer_interrupt = 0;
+/************************************************************************/
+/*	Getting clock data every 26 seconds									*/
+/*	Implemented on a 8 bit timer overflow								*/
+/************************************************************************/
 ISR(TIMER0_OVF_vect) {
-	interrupt++;
-	if(interrupt > 100) {
-		interrupt=0;
+	timer_interrupt++;
+	if(timer_interrupt > 100) {
+		timer_interrupt=0;
 		get_clock();
 	}
 }
@@ -170,19 +177,27 @@ ISR(TIMER0_OVF_vect) {
 /*	This will turn on LEFT LED LIGHT									*/           
 /************************************************************************/
 ISR(INT1_vect) {
-	BIT_FLIP(PORTC, PC1);
+	BIT_FLIP(PORTC, PINC1);
 	_delay_ms(200);
 }
 
-
+volatile bool sleep = false;
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD2 pin low state)				*/
 /*	This will turn on RIGHT LED LIGHT and enable DAILY SLEEP MODE		*/
 /************************************************************************/
 ISR(INT0_vect) {
-	BIT_FLIP(PORTC, PC0);
+	sleep = (sleep == true) ? false : true;
+	
+	if(sleep) {
+		BIT_SET(PORTC, PC0);
+	} else {
+		BIT_CLE(PORTC, PC0);
+	}
+	//BIT_FLIP(PORTC, PINC0);
 	_delay_ms(200);
 }
+
 
 
 int main(void)
@@ -197,11 +212,11 @@ int main(void)
 	DDRB	= 0xFF; 							// Set all pins of PORTB as output
 	PORTB	= 0x00;								// Ground all segments (TURN ON).
 	
-	DDRD = (1<<PD5) | (1<<PD6) | (1<<PD7);		// DIGITS ANODE (set as output):	PD5=>3 PD6=>2 PD7=>1
-	DDRA = (1<<PA3);							// DIGITS ANODE (set as output):	PA3=>4
+	DDRD = (1<<PIND5) | (1<<PIND6) | (1<<PIND7);// DIGITS ANODE (set as output):	PD5=>3 PD6=>2 PD7=>1
+	DDRA = (1<<PINA3);							// DIGITS ANODE (set as output):	PA3=>4
 	
-	BIT_SET(DDRC, PC0);							// Set LEFT LED PIN as output
-	BIT_SET(DDRC, PC1);							// Set RIGHT LED PIN as output
+	BIT_SET(DDRC, PINC0);							// Set LEFT LED PIN as output
+	BIT_SET(DDRC, PINC1);							// Set RIGHT LED PIN as output
 	
 	//BIT_CLE(DDRD, PD6);							// Input pin for button
 	//BIT_SET(PORTD, PD6);						// Pull up res for input pin
@@ -215,25 +230,47 @@ int main(void)
 	EICRA&=~((1<<ISC11)|(1<<ISC10)|(1<<ISC00)|(1<<ISC01));	// Set LOW LEVEL interrupt for INT0 & INT1
 	EIMSK|=((1<<INT1)|(1<<INT0)); 							// Enable interrupt on INT1
 	
-	BIT_CLE(DDRD, PD3);					// Input pin for button INT1
-	BIT_CLE(DDRD, PD2);					// Input pin for button INT0
-	BIT_SET(PORTD, PD3);				// Pull up res for input pin INT1
-	BIT_SET(PORTD, PD2);				// Pull up res for input pin INT0
+	BIT_CLE(DDRD, PIND3);					// Input pin for button INT1  "Light On/Off"
+	BIT_CLE(DDRD, PIND2);					// Input pin for button INT0  "Sleep Mode On/Off"
+	BIT_CLE(DDRC, PINC2);					// Input pin for button PINC2 "Adjust Clock"
 	
-	sei();								// Enable global interrupts
+	BIT_SET(PORTD, PIND3);					// Pull up res for input pin INT1  "Light On/Off"
+	BIT_SET(PORTD, PIND2);					// Pull up res for input pin INT0  "Sleep Mode On/Off"
+	BIT_SET(PORTC, PINC2);					// Pull up res for input pin PINC2 "Adjust Clock"
+
+	sei();									// Enable global interrupts
 
 	//BIT_SET(PORTC, PC1);
 	//BIT_SET(PORTC, PC0);
 	
 	while(1) {
-			
+		if(sleep) {
+			FIRST_OFF;
+			SECOND_OFF;
+			THIRD_OFF;
+			FOUR_OFF;
+
+			cli();							// Disable Interrupts
+			sleep_enable();					// Enable Sleep Mode
+			set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
+			sleep_bod_disable();			// Disable the Brown Out Detector (during sleep)
+			sei();							// Enable Interrupts
+			sleep_cpu();					// Go to Sleep
+			sleep_disable();				// Entrance point
+		}		
+	
+		if( ! BIT_CHECK(PINC,PINC2) ) {
+			adjust_clock();
+			_delay_ms(200);
+		}
+	
 		if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
-			PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
+			PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(500);	FIRST_OFF;
 		}
 
-		PORTB = digit_hours;			SECOND_ON;	_delay_ms(5);	SECOND_OFF;
-		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(5);	THIRD_OFF;
-		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(5);	FOUR_OFF;
+		PORTB = digit_hours;			SECOND_ON;	_delay_ms(500);	SECOND_OFF;
+		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(500);	THIRD_OFF;
+		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(500);	FOUR_OFF;
 	}
 
 

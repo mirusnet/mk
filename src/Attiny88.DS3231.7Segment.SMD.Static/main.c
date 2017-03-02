@@ -94,7 +94,7 @@ int main(void) {
 	wdt_enable(WDTO_8S);				// Set watch dog to run every 8 seconds
 	WDTCSR |= (1<<WDIE);				// Set watch dog action to fire interrupt instead of reset
 
-	//set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
 	sei();									// Enable global interrupts
 	
 	while(1) {
