@@ -51,8 +51,9 @@
 /************************************************************************/
 /*	START OF CLOCK FUNCTIONS                                            */
 /************************************************************************/
-volatile uint8_t minutes_register	= 0;
-volatile uint8_t hours_register		= 0;
+
+volatile uint8_t hour			= 0;
+volatile uint8_t minute			= 0;
 
 volatile uint8_t digit_dec_minutes	= 0;
 volatile uint8_t digit_minutes		= 0;
@@ -112,9 +113,9 @@ void set_minutes(uint8_t minute) {
 }
 
 void set_hours(uint8_t hours) {
-	i2c_start_wait(0xD0);						// set device address and WRITE mode
-	i2c_write(0x02); 							// write "write to" byte
-	i2c_write(dec_do_bcd(hours));				// set hours without loosing 12H format
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x02); 						// write "write to" byte
+	i2c_write(dec_do_bcd(hours));			// set hours without loosing 12H format
 	i2c_stop();
 }
 
@@ -123,9 +124,12 @@ void get_clock(void) {
 	i2c_write(0x01); 						// write "read from" byte
 	i2c_rep_start(0xD1); 					// set device address and read mode
 	
-	minutes_register	= i2c_readAck(); 	// Read one byte
-	hours_register		= i2c_readNak(); 	// Read second byte and send END
+	uint8_t minutes_register	= i2c_readAck(); 	// Read one byte
+	uint8_t hours_register		= i2c_readNak(); 	// Read second byte and send END
 	i2c_stop();
+	
+	hour	= bcd_to_dec(hours_register & 0b00111111);
+	minute	= bcd_to_dec(minutes_register);
 	
 	digit_dec_minutes	= convert((minutes_register >> 4) & B0111);
 	digit_minutes		= convert(minutes_register & B00001111);
@@ -134,13 +138,9 @@ void get_clock(void) {
 	BIT_CLE(digit_hours, PINB3); 				// enable dot segment
 }
 
-/*	Button processing */
 void adjust_clock(void) {
 	get_clock();
-	
-	uint8_t hour	= bcd_to_dec(hours_register & 0b00111111);
-	uint8_t minute	= bcd_to_dec(minutes_register);
-	
+
 	if(minute>=59) {
 		minute=0;
 		if(hour >= 23) {
@@ -160,10 +160,9 @@ void adjust_clock(void) {
 void check_and_adjust_clock() {
 	if( ! BIT_CHECK(PINC,PINC2) ) {
 		adjust_clock();
-		_delay_ms(200);
+		_delay_ms(100);
 	}
 }
-
 /************************************************************************/
 /*	END OF CLOCK FUNCTIONS                                              */
 /************************************************************************/
@@ -201,7 +200,7 @@ ISR(TIMER0_OVF_vect) {
 
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD3 pin low state)				*/
-/*	This will turn on LEFT LED FLASH LIGHT									*/           
+/*	This will turn on LEFT LED FLASH LIGHT								*/           
 /************************************************************************/
 ISR(INT1_vect) {
 	BIT_FLIP(PORTC, PINC1);
@@ -256,6 +255,8 @@ int main(void)
 
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
+	//set_hours(8);
+	//set_minutes(58);
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
 	PORTB	= 0x00;										// Ground all segments (TURN ON).
@@ -297,7 +298,7 @@ int main(void)
 	while(1) {
 		check_and_adjust_clock();
 
-		if(sleep) {
+		if(sleep && (hour>8) && (hour<18)) {
 			display_disable();
 			cli();								// Disable Interrupts
 			sleep_enable();						// Enable Sleep Mode
