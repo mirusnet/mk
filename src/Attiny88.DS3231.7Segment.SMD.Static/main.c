@@ -80,7 +80,7 @@ int main(void) {
 	PORTD = B00001000; // Internal pull up res on PD3 for INT1 button
 
 	// ENABLE INT1 interrupt
-	EICRA&=~((1<<ISC11)|(1<<ISC10));	// Set LOW LEVEL interrupt
+	EICRA&=~((1<<ISC11)|(1<<ISC10));			// Set LOW LEVEL interrupt
 	EIMSK|=(1<<INT1); 					// Enable interrupt on INT1
 
 	/*

@@ -14,4 +14,8 @@
 **/*.cproj
 **/Debug
 **/Release
-**/*.vs            
+**/*.vs
+**/burn.bat
+**/examples.txt
+
+            

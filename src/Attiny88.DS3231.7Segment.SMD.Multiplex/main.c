@@ -8,9 +8,10 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 #include <avr/power.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
+#include <util/delay.h>
 #include <stdbool.h>
 
 #include "i2cmaster.h"
@@ -90,6 +91,13 @@ void set_12h_format(void) {
 	i2c_stop();
 }
 
+void set_24h_format(void) {
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x02); 						// write "write to" byte
+	i2c_write(0x00);  						// set 12H format
+	i2c_stop();
+}
+
 void set_seconds(uint8_t second) {
 	i2c_start_wait(0xD0);					// set device address and WRITE mode
 	i2c_write(0x00); 						// write "write to" byte
@@ -107,7 +115,7 @@ void set_minutes(uint8_t minute) {
 void set_hours(uint8_t hours) {
 	i2c_start_wait(0xD0);						// set device address and WRITE mode
 	i2c_write(0x02); 							// write "write to" byte
-	i2c_write(dec_do_bcd(hours) | 0b01000000);	// set hours without loosing 12H format
+	i2c_write(dec_do_bcd(hours));				// set hours without loosing 12H format
 	i2c_stop();
 }
 
@@ -122,7 +130,7 @@ void get_clock(void) {
 	
 	digit_dec_minutes	= convert((minutes_register >> 4) & B0111);
 	digit_minutes		= convert(minutes_register & B00001111);
-	digit_dec_hours		= convert((hours_register >> 4) & B1);
+	digit_dec_hours		= convert((hours_register >> 4) & B11);
 	digit_hours			= convert(hours_register & B00001111);
 	BIT_CLE(digit_hours, PINB3); 				// enable dot segment
 }
@@ -131,13 +139,13 @@ void get_clock(void) {
 void adjust_clock(void) {
 	get_clock();
 	
-	uint8_t hour	= bcd_to_dec(hours_register & 0b00011111);
+	uint8_t hour	= bcd_to_dec(hours_register & 0b00111111);
 	uint8_t minute	= bcd_to_dec(minutes_register);
 	
 	if(minute>=59) {
 		minute=0;
-		if(hour >= 12) {
-			hour = 1;
+		if(hour >= 23) {
+			hour = 0;
 			} else {
 			++hour;
 		}
@@ -145,7 +153,7 @@ void adjust_clock(void) {
 		} else {
 		++minute;
 	}
-	set_seconds(0); // let zero seconds as well
+	set_seconds(0);	// let zero seconds as well
 	set_minutes(minute);
 	get_clock();
 }
@@ -158,11 +166,17 @@ void adjust_clock(void) {
 
 
 
-volatile uint8_t timer_interrupt = 0;
+ISR(WDT_vect) {
+	get_clock();
+	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
+}
+
 /************************************************************************/
 /*	Getting clock data every 26 seconds									*/
 /*	Implemented on a 8 bit timer overflow								*/
 /************************************************************************/
+/*
+volatile uint8_t timer_interrupt = 0;
 ISR(TIMER0_OVF_vect) {
 	timer_interrupt++;
 	if(timer_interrupt > 100) {
@@ -170,7 +184,7 @@ ISR(TIMER0_OVF_vect) {
 		get_clock();
 	}
 }
-
+*/
 
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD3 pin low state)				*/
@@ -181,11 +195,11 @@ ISR(INT1_vect) {
 	_delay_ms(300);
 }
 
-volatile bool sleep = false;
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD2 pin low state)				*/
 /*	This will turn on RIGHT LED LIGHT and enable DAILY SLEEP MODE		*/
 /************************************************************************/
+volatile bool sleep = false;
 ISR(INT0_vect) {
 	sleep = (sleep == true) ? false : true;
 	sleep ? BIT_SET(PORTC, PINC0) : BIT_CLE(PORTC, PINC0);
@@ -205,38 +219,39 @@ void check_and_adjust_clock() {
 
 void display_time() {
 	if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
-		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(1000);	FIRST_OFF;
+		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
 	}
-		PORTB = digit_hours;			SECOND_ON;	_delay_ms(1000);	SECOND_OFF;
-		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(1000);	THIRD_OFF;
-		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(1000);	FOUR_OFF;
+		PORTB = digit_hours;			SECOND_ON;	_delay_ms(5);	SECOND_OFF;
+		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(5);	THIRD_OFF;
+		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(5);	FOUR_OFF;
 }
 
 int main(void)
 {
-	BIT_SET(ACSR, ACD);							// Disable Analog Comparator
-	BIT_CLE(ADCSRB, ADEN);						// Disable Analog to Digital Converter
+	BIT_SET(ACSR, ACD);									// Disable Analog Comparator
+	BIT_CLE(ADCSRB, ADEN);								// Disable Analog to Digital Converter
 
-	i2c_init();									// Initialize I2C interface
-	set_12h_format(); 							// This will also clear hour register
-
-
-	DDRB	= 0xFF; 							// Set all pins of PORTB as output
-	PORTB	= 0x00;								// Ground all segments (TURN ON).
+	i2c_init();											// Initialize I2C interface
+	set_24h_format(); 									// This will also clear hour register
+		
+	DDRB	= 0xFF; 									// Set all pins of PORTB as output
+	PORTB	= 0x00;										// Ground all segments (TURN ON).
 	
-	DDRD = (1<<PIND5) | (1<<PIND6) | (1<<PIND7);// DIGITS ANODE (set as output):	PD5=>3 PD6=>2 PD7=>1
-	DDRA = (1<<PINA3);							// DIGITS ANODE (set as output):	PA3=>4
+	DDRD = (1<<PIND5) | (1<<PIND6) | (1<<PIND7);		// DIGITS ANODE (set as output):	PD5=>3 PD6=>2 PD7=>1
+	DDRA = (1<<PINA3);									// DIGITS ANODE (set as output):	PA3=>4
 	
-	BIT_SET(DDRC, PINC0);							// Set LEFT LED PIN as output
-	BIT_SET(DDRC, PINC1);							// Set RIGHT LED PIN as output
-	
-	//BIT_CLE(DDRD, PD6);							// Input pin for button
-	//BIT_SET(PORTD, PD6);							// Pull up res for input pin
+	BIT_SET(DDRC, PINC0);								// Set LEFT LED PIN as output
+	BIT_SET(DDRC, PINC1);								// Set RIGHT LED PIN as output
 
-	// 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
-	TIMSK0	= 1<<TOIE0;				 	// Enable overflow interrupt by timer T0
-	TCCR0A	= (1<<CS00) | (1<<CS02); 	// Set up timer at F_CPU/1024 prescaler
-	TCNT0	= 0x00; 		 		 	// Zero timer (start it)
+	/* // 8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
+	TIMSK0	= 1<<TOIE0;				 					// Enable overflow interrupt by timer T0
+	TCCR0A	= (1<<CS00) | (1<<CS02); 					// Set up timer at F_CPU/1024 prescaler
+	TCNT0	= 0x00; 		 		 					// Zero timer (start it)
+	*/
+
+	wdt_reset();										// Reset watch dog timer
+	wdt_enable(WDTO_8S);								// Set watch dog to run every 8 seconds
+	WDTCSR |= (1<<WDIE);								// Set watch dog action to fire interrupt instead of reset
 	
 	// ENABLE INT1 interrupt
 	EICRA&=~((1<<ISC11)|(1<<ISC10)|(1<<ISC00)|(1<<ISC01));	// Set LOW LEVEL interrupt for INT0 & INT1
@@ -254,16 +269,15 @@ int main(void)
 
 	//BIT_SET(PORTC, PC1);
 	//BIT_SET(PORTC, PC0);
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
 	
 	while(1) {
 		check_and_adjust_clock();
 
 		if(sleep) {
 			display_disable();
-
 			cli();								// Disable Interrupts
 			sleep_enable();						// Enable Sleep Mode
-			set_sleep_mode(SLEEP_MODE_PWR_DOWN);// Set Sleep Mode
 			sleep_bod_disable();				// Disable the Brown Out Detector (during sleep)
 			sei();								// Enable Interrupts
 			sleep_cpu();						// Go to Sleep
