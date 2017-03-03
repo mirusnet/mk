@@ -255,7 +255,8 @@ int main(void)
 
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
-	//set_hours(8);
+	
+	//set_hours(17);
 	//set_minutes(58);
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
