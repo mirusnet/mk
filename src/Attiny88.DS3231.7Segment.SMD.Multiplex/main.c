@@ -2,7 +2,7 @@
  * Attiny88.DS3231.7Segment.SMD.Multiplex main
  *
  * Created: 28/02/2017 12:53:32
- * Author : rmikhaylenko
+ * Author : Ruslan Mikhaylenko mirusnet@gmail.com
  */ 
 #define F_CPU 1000000
 
@@ -43,7 +43,6 @@
 #define DIGIT_ZERO			0x0A
 #define DIGIT_ALL_DISABLE	0xFF
 #define DIGIT_ALL_ENABLE	0x00
-
 
 
 
@@ -158,6 +157,13 @@ void adjust_clock(void) {
 	get_clock();
 }
 
+void check_and_adjust_clock() {
+	if( ! BIT_CHECK(PINC,PINC2) ) {
+		adjust_clock();
+		_delay_ms(200);
+	}
+}
+
 /************************************************************************/
 /*	END OF CLOCK FUNCTIONS                                              */
 /************************************************************************/
@@ -166,6 +172,13 @@ void adjust_clock(void) {
 
 
 
+/************************************************************************/
+/*	START OF INTERRUPT ROUTINES	                                        */
+/************************************************************************/
+
+/************************************************************************/
+/*	WATCHDOG timer fires every 8 seconds                                */
+/************************************************************************/
 ISR(WDT_vect) {
 	get_clock();
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
@@ -206,15 +219,20 @@ ISR(INT0_vect) {
 	_delay_ms(300);
 }
 
+/************************************************************************/
+/*	END OF INTERRUPT ROUTINES	                                        */
+/************************************************************************/
+
+
+
+
+
+/************************************************************************/
+/*	START OF CLOCK FUNCTIONS                                            */
+/************************************************************************/
+
 void display_disable() {
 	FIRST_OFF; 	SECOND_OFF; THIRD_OFF; FOUR_OFF;
-}
-
-void check_and_adjust_clock() {
-	if( ! BIT_CHECK(PINC,PINC2) ) {
-		adjust_clock();
-		_delay_ms(200);
-	}
 }
 
 void display_time() {
@@ -225,6 +243,11 @@ void display_time() {
 		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(5);	THIRD_OFF;
 		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(5);	FOUR_OFF;
 }
+/************************************************************************/
+/*	END OF DISPLAY FUNCTIONS                                            */
+/************************************************************************/
+
+
 
 int main(void)
 {
