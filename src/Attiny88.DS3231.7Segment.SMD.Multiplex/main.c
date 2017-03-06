@@ -44,7 +44,15 @@
 #define DIGIT_ALL_DISABLE	0xFF
 #define DIGIT_ALL_ENABLE	0x00
 
+#define DIGIT_S				0xA8
+#define DIGIT_L				0x8F
+#define DIGIT_E				0x8C
+#define DIGIT_O				0x0A
+#define DIGIT_N				0x1A
+#define DIGIT_F				0x9C
 
+#define SLEEP_START	9
+#define SLEEP_END	19
 
 
 
@@ -59,6 +67,9 @@ volatile uint8_t digit_dec_minutes	= 0;
 volatile uint8_t digit_minutes		= 0;
 volatile uint8_t digit_dec_hours	= 0;
 volatile uint8_t digit_hours		= 0;
+
+volatile bool go_to_sleep = false;	// if sleep mode is enabled and the time frame is valid hour>8 && hour<18
+volatile bool sleep = false;		// if sleep mode is enabled
 
 uint8_t dec_do_bcd(uint8_t val) {
 	return ( (val/10*16) + (val%10) );
@@ -167,6 +178,41 @@ void check_and_adjust_clock() {
 /*	END OF CLOCK FUNCTIONS                                              */
 /************************************************************************/
 
+/************************************************************************/
+/*	START OF DISPLAY FUNCTIONS                                          */
+/************************************************************************/
+
+// Display SL ON (sleep on)
+void display_slon() {
+	digit_dec_hours		= DIGIT_S;
+	digit_hours			= DIGIT_L;
+	digit_dec_minutes	= DIGIT_O;
+	digit_minutes		= DIGIT_N;
+}
+
+// Display SL OF (sleep off)
+void display_slof() {
+	digit_dec_hours		= DIGIT_S;
+	digit_hours			= DIGIT_L;
+	digit_dec_minutes	= DIGIT_O;
+	digit_minutes		= DIGIT_F;
+}
+
+void display_disable() {
+	FIRST_OFF; 	SECOND_OFF; THIRD_OFF; FOUR_OFF;
+}
+
+void display_time() {
+	if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
+		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
+	}
+	PORTB = digit_hours;			SECOND_ON;	_delay_ms(5);	SECOND_OFF;
+	PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(5);	THIRD_OFF;
+	PORTB = digit_minutes;			FOUR_ON;	_delay_ms(5);	FOUR_OFF;
+}
+/************************************************************************/
+/*	END OF DISPLAY FUNCTIONS                                            */
+/************************************************************************/
 
 
 
@@ -180,6 +226,7 @@ void check_and_adjust_clock() {
 /************************************************************************/
 ISR(WDT_vect) {
 	get_clock();
+	(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) ? (go_to_sleep = true) : (go_to_sleep = false);
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
 
@@ -203,21 +250,27 @@ ISR(TIMER0_OVF_vect) {
 /*	This will turn on LEFT LED FLASH LIGHT								*/           
 /************************************************************************/
 ISR(INT1_vect) {
+	display_disable();		// JUST CLRSCR
 	BIT_FLIP(PORTC, PINC1);
 	_delay_ms(300);
 }
 
 /************************************************************************/
 /*	Button processing by INT1 interrupt (PD2 pin low state)				*/
-/*	This will turn on RIGHT LED LIGHT and enable DAILY SLEEP MODE		*/
+/*	This will turn on BLUE LED LIGHT and enable DAILY SLEEP MODE		*/
 /************************************************************************/
-volatile bool sleep = false;
 ISR(INT0_vect) {
+	display_disable();	// JUST CLRSCR
 	sleep = (sleep == true) ? false : true;
-	sleep ? BIT_SET(PORTC, PINC0) : BIT_CLE(PORTC, PINC0);
+	if(sleep) {
+		BIT_SET(PORTC, PINC0);
+		display_slon();
+	} else {
+		BIT_CLE(PORTC, PINC0);
+		display_slof();
+	}
 	_delay_ms(300);
 }
-
 /************************************************************************/
 /*	END OF INTERRUPT ROUTINES	                                        */
 /************************************************************************/
@@ -226,25 +279,7 @@ ISR(INT0_vect) {
 
 
 
-/************************************************************************/
-/*	START OF CLOCK FUNCTIONS                                            */
-/************************************************************************/
 
-void display_disable() {
-	FIRST_OFF; 	SECOND_OFF; THIRD_OFF; FOUR_OFF;
-}
-
-void display_time() {
-	if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
-		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
-	}
-		PORTB = digit_hours;			SECOND_ON;	_delay_ms(5);	SECOND_OFF;
-		PORTB = digit_dec_minutes;		THIRD_ON;	_delay_ms(5);	THIRD_OFF;
-		PORTB = digit_minutes;			FOUR_ON;	_delay_ms(5);	FOUR_OFF;
-}
-/************************************************************************/
-/*	END OF DISPLAY FUNCTIONS                                            */
-/************************************************************************/
 
 
 
@@ -256,8 +291,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	//set_hours(17);
-	//set_minutes(58);
+	set_hours(18);
+	set_minutes(59);
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
 	PORTB	= 0x00;										// Ground all segments (TURN ON).
@@ -299,7 +334,7 @@ int main(void)
 	while(1) {
 		check_and_adjust_clock();
 
-		if(sleep && (hour>8) && (hour<18)) {
+		if(go_to_sleep) {
 			display_disable();
 			cli();								// Disable Interrupts
 			sleep_enable();						// Enable Sleep Mode
