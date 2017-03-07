@@ -226,7 +226,7 @@ void display_time() {
 /************************************************************************/
 ISR(WDT_vect) {
 	get_clock();
-	(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) ? (go_to_sleep = true) : (go_to_sleep = false);
+	(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) ? (go_to_sleep = true) : (go_to_sleep = false); // setting go_to_sleep flag
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
 
@@ -268,6 +268,7 @@ ISR(INT0_vect) {
 	} else {
 		BIT_CLE(PORTC, PINC0);
 		display_slof();
+		go_to_sleep = false;
 	}
 	_delay_ms(300);
 }
@@ -286,8 +287,9 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(10);
-	set_minutes(34);
+	set_hours(10);										// Initial clock settings
+	set_minutes(30);									// Initial clock settings
+	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
 	PORTB	= 0x00;										// Ground all segments (TURN ON).
