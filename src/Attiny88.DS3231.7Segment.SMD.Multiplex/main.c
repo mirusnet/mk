@@ -278,11 +278,6 @@ ISR(INT0_vect) {
 
 
 
-
-
-
-
-
 int main(void)
 {
 	BIT_SET(ACSR, ACD);									// Disable Analog Comparator
@@ -291,8 +286,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(18);
-	set_minutes(59);
+	set_hours(10);
+	set_minutes(34);
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
 	PORTB	= 0x00;										// Ground all segments (TURN ON).
