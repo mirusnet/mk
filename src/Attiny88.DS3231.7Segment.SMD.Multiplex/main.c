@@ -226,7 +226,13 @@ void display_time() {
 /************************************************************************/
 ISR(WDT_vect) {
 	get_clock();
-	(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) ? (go_to_sleep = true) : (go_to_sleep = false); // setting go_to_sleep flag
+	if(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) {
+			go_to_sleep = true;		// setting go_to_sleep flag
+			BIT_SET(PORTC, PINC0);	// turn on blue light
+		} else {
+			go_to_sleep = false;
+			BIT_CLE(PORTC, PINC0);	// turn off blue light
+		}  
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
 
@@ -263,10 +269,10 @@ ISR(INT0_vect) {
 	display_disable();	// JUST CLRSCR
 	sleep = (sleep == true) ? false : true;
 	if(sleep) {
-		BIT_SET(PORTC, PINC0);
+//		BIT_SET(PORTC, PINC0);
 		display_slon();
 	} else {
-		BIT_CLE(PORTC, PINC0);
+//		BIT_CLE(PORTC, PINC0);
 		display_slof();
 		go_to_sleep = false;
 	}
