@@ -105,7 +105,7 @@ void set_12h_format(void) {
 void set_24h_format(void) {
 	i2c_start_wait(0xD0);					// set device address and WRITE mode
 	i2c_write(0x02); 						// write "write to" byte
-	i2c_write(0x00);  						// set 12H format
+	i2c_write(0x00);  						// set 24H format
 	i2c_stop();
 }
 
@@ -126,7 +126,7 @@ void set_minutes(uint8_t minute) {
 void set_hours(uint8_t hours) {
 	i2c_start_wait(0xD0);					// set device address and WRITE mode
 	i2c_write(0x02); 						// write "write to" byte
-	i2c_write(dec_do_bcd(hours));			// set hours without loosing 12H format
+	i2c_write(dec_do_bcd(hours));			// set hours 
 	i2c_stop();
 }
 
@@ -171,7 +171,7 @@ void adjust_clock(void) {
 void check_and_adjust_clock() {
 	if( ! BIT_CHECK(PINC,PINC2) ) {
 		adjust_clock();
-		_delay_ms(100);
+		_delay_ms(200);
 	}
 }
 /************************************************************************/
@@ -269,10 +269,8 @@ ISR(INT0_vect) {
 	display_disable();	// JUST CLRSCR
 	sleep = (sleep == true) ? false : true;
 	if(sleep) {
-//		BIT_SET(PORTC, PINC0);
 		display_slon();
 	} else {
-//		BIT_CLE(PORTC, PINC0);
 		display_slof();
 		go_to_sleep = false;
 	}
@@ -293,8 +291,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(10);										// Initial clock settings
-	set_minutes(30);									// Initial clock settings
+	set_hours(12);										// Initial clock settings
+	set_minutes(45);									// Initial clock settings
 	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
