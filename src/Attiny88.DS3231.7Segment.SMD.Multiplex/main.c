@@ -186,7 +186,11 @@ void display_on_time() {
 	digit_dec_hours		= DIGIT_S;
 	digit_hours			= DIGIT_O;
 	
-	digit_dec_minutes	= convert(sleep_start / 10);
+	if(sleep_start/10 == 0) {
+		digit_dec_minutes = DIGIT_ALL_DISABLE;
+	} else {
+		digit_dec_minutes	= convert(sleep_start / 10);
+	}
 	digit_minutes		= convert(sleep_start % 10);
 }
 
