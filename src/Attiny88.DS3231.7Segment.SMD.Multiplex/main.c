@@ -329,7 +329,7 @@ int main(void)
 	set_24h_format(); 									// This will also clear hour register
 	
 	set_hours(9);										// Initial clock settings
-	set_minutes(59);									// Initial clock settings
+	set_minutes(30);									// Initial clock settings
 	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
