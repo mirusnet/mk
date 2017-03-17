@@ -51,10 +51,11 @@
 #define DIGIT_N				0x1A
 #define DIGIT_F				0x9C
 
-#define SLEEP_START	9
+
+volatile uint8_t sleep_start = 9;
 #define SLEEP_END	19
-
-
+#define SLEEP_START_MIN 6
+#define SLEEP_START_MAX 12
 
 /************************************************************************/
 /*	START OF CLOCK FUNCTIONS                                            */
@@ -68,8 +69,11 @@ volatile uint8_t digit_minutes		= 0;
 volatile uint8_t digit_dec_hours	= 0;
 volatile uint8_t digit_hours		= 0;
 
-volatile bool go_to_sleep = false;	// if sleep mode is enabled and the time frame is valid hour>8 && hour<18
+volatile bool go_to_sleep = false;	// if sleep mode is enabled and the time frame is valid hour>START && hour<FINISH
 volatile bool sleep = false;		// if sleep mode is enabled
+
+volatile bool light_enabled = false; // if green light is on/off
+
 
 uint8_t dec_do_bcd(uint8_t val) {
 	return ( (val/10*16) + (val%10) );
@@ -168,9 +172,37 @@ void adjust_clock(void) {
 	get_clock();
 }
 
+void adjust_sleep_start_time() {
+	if(sleep_start >= SLEEP_START_MAX) {
+		sleep_start = SLEEP_START_MIN;
+	} else {
+		++sleep_start;
+	}
+}
+
+
+// Display SO SLEEP_START_TIME (SO 09) sleep on
+void display_on_time() {
+	digit_dec_hours		= DIGIT_S;
+	digit_hours			= DIGIT_O;
+	
+	digit_dec_minutes	= convert(sleep_start / 10);
+	digit_minutes		= convert(sleep_start % 10);
+}
+
+
+/************************************************************************/
+/* The function adjusts clock's time by adding minute                   */
+/* If green light is on the function adjusts sleep start time           */
+/************************************************************************/
 void check_and_adjust_clock() {
 	if( ! BIT_CHECK(PINC,PINC2) ) {
-		adjust_clock();
+		if(light_enabled) {
+			adjust_sleep_start_time();
+			display_on_time();
+		} else {
+			adjust_clock();
+		}
 		_delay_ms(200);
 	}
 }
@@ -226,7 +258,7 @@ void display_time() {
 /************************************************************************/
 ISR(WDT_vect) {
 	get_clock();
-	if(sleep && (hour>=SLEEP_START) && (hour<SLEEP_END)) {
+	if(sleep && (hour>=sleep_start) && (hour<SLEEP_END)) {
 			go_to_sleep = true;		// setting go_to_sleep flag
 			BIT_SET(PORTC, PINC0);	// turn on blue light
 		} else {
@@ -257,6 +289,7 @@ ISR(TIMER0_OVF_vect) {
 /************************************************************************/
 ISR(INT1_vect) {
 	display_disable();		// JUST CLRSCR
+	light_enabled = !light_enabled;
 	BIT_FLIP(PORTC, PINC1);
 	_delay_ms(300);
 }
@@ -267,7 +300,7 @@ ISR(INT1_vect) {
 /************************************************************************/
 ISR(INT0_vect) {
 	display_disable();	// JUST CLRSCR
-	sleep = (sleep == true) ? false : true;
+	sleep = !sleep;
 	if(sleep) {
 		display_slon();
 	} else {
@@ -291,8 +324,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(12);										// Initial clock settings
-	set_minutes(45);									// Initial clock settings
+	set_hours(9);										// Initial clock settings
+	set_minutes(59);									// Initial clock settings
 	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
