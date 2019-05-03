@@ -58,7 +58,7 @@ int main(void)
 	//8 Bit timer. Overflow routine  - ISR(TIMER0_OVF_vect)
 	
 	TIMSK	= 1<<TOIE0;				 // Enable overflow interrupt by timer T0
-	TCCR0B	= (1<<CS00) | (1<<CS02); // Set up timer at F_CPU/1024
+	TCCR0B	= (1<<CS00) | (1<<CS02); 		 // Set up timer at F_CPU/1024
 	TCNT0	= 0x00; 		 		 // Zero timer (start it)
 	
 	/* 16 bit timer NOT TESTED Overflow routine  - ISR(TIMER1_OVF_vect)

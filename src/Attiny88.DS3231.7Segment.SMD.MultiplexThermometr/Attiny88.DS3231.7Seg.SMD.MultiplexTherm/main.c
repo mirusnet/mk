@@ -1,7 +1,7 @@
 /*
  * Attiny88.DS3231.7Segment.SMD.Multiplex main
  *
- * Created: 28/02/2017 12:53:32
+ * Created: 28/02/2018 12:29:32
  * Author : Ruslan Mikhaylenko mirusnet@gmail.com
  */ 
 #define F_CPU 1000000
@@ -52,11 +52,6 @@
 #define DIGIT_F				0x9C
 
 
-volatile uint8_t sleep_start = 9;
-#define SLEEP_END	19
-#define SLEEP_START_MIN 6
-#define SLEEP_START_MAX 12
-
 // We are using custom delay with count * 10ms cycles, so that 20*10=200ms
 #define DEFAULT_PRESS_DELAY  20
 
@@ -74,18 +69,10 @@ volatile uint8_t digit_dec_hours	= 0;
 volatile uint8_t digit_hours		= 0;
 
 
-volatile uint16_t timer_minutes = 0;
-volatile uint8_t timer_last_minute = 61;
-
-
 
 volatile uint8_t press_delay		= DEFAULT_PRESS_DELAY;
 
-volatile bool go_to_sleep = false;	// if sleep mode is enabled and the time frame is valid hour>START && hour<FINISH
-volatile bool sleep = false;		// if sleep mode is enabled
-
-volatile bool light_enabled = false; // if green light is on/off
-
+volatile bool clock_mode = false;
 
 static inline void custom_delay_ten_ms(uint8_t count) {
 	while(count--) {
@@ -152,17 +139,39 @@ void set_hours(uint8_t hours) {
 	i2c_stop();
 }
 
-/* to be implemented, currently not needed
-volatile uint8_t temperature	= 0;
+
+
 void get_temperature() {
 	i2c_start_wait(0xD0);					// set device address and write mode
 	i2c_write(0x11); 						// write "read from" byte
 	i2c_rep_start(0xD1); 					// set device address and read mode
 	
-	temperature	= i2c_readNak(); 			// Read byte and send END
-	i2c_stop();	
+	uint8_t temperature			= i2c_readAck(); 	// Read one byte
+	uint8_t temperature_decimal	= (i2c_readNak() >> 6); 	// Read another byte and send END
+	i2c_stop();
+	
+	switch (temperature_decimal) {
+		case 0:		digit_minutes = DIGIT_ZERO;			break;
+		case 1:		digit_minutes = DIGIT_THREE; 		break;
+		case 2:		digit_minutes = DIGIT_FIVE; 		break;
+		case 3:		digit_minutes = DIGIT_EIGHT;		break;
+		default:	digit_minutes = DIGIT_ALL_DISABLE;
+	}
+	
+	
+	if(temperature>>7 == 1) {
+		digit_dec_hours	= 253;		   // Minus sign to be shown
+	} else {
+		digit_dec_hours = DIGIT_ZERO;  // This will not be shown by display at all
+	}
+	
+	
+	digit_dec_minutes	= convert((temperature& 0b01111111) % 10);				
+	digit_hours			= convert((temperature& 0b01111111) / 10);						
+	
+	BIT_CLE(digit_dec_minutes, PINB3); 									// enable dot segment
 }
-*/
+
 
 void get_clock(void) {
 	i2c_start_wait(0xD0);					// set device address and write mode
@@ -203,68 +212,19 @@ void adjust_clock(void) {
 	get_clock();
 }
 
-void adjust_sleep_start_time() {
-	if(sleep_start >= SLEEP_START_MAX) {
-		sleep_start = SLEEP_START_MIN;
-	} else {
-		++sleep_start;
-	}
-}
-
-
-// Display SO SLEEP_START_TIME (SO 9) sleep on
-void display_on_time() {
-	digit_dec_hours		= DIGIT_S;
-	digit_hours			= DIGIT_O;
-	
-	if(sleep_start/10 == 0) {
-		digit_dec_minutes = DIGIT_ALL_DISABLE;
-	} else {
-		digit_dec_minutes	= convert(sleep_start / 10);
-	}
-	digit_minutes		= convert(sleep_start % 10);
-}
-
 
 
 /************************************************************************/
 /* The function adjusts clock's time by adding minute                   */
-/* If green light is on the function adjusts sleep start time           */
 /************************************************************************/
 void check_and_adjust_clock() {
 	if( ! BIT_CHECK(PINC,PINC2) ) {
-		
 		if(press_delay >1) {
 			--press_delay;
 		}
-		
-		if(light_enabled) {
-			adjust_sleep_start_time();
-			display_on_time();
-			press_delay	= DEFAULT_PRESS_DELAY; // We do not need to speed up here
-		} else {
-			adjust_clock();
-		}
-		//_delay_ms(press_delay);
+		adjust_clock();
 		custom_delay_ten_ms(press_delay);
 	}
-	
-}
-
-
-
-void set_timer_values() {
-	if(minute != timer_last_minute) {
-		timer_minutes++;
-	}
-	timer_last_minute = minute; 
-		
-	digit_dec_minutes	= convert( (timer_minutes%60)/10 );
-	digit_minutes		= convert( (timer_minutes%60)%10 );
-	digit_dec_hours		= convert( (timer_minutes/60)/10 );
-	digit_hours			= convert( (timer_minutes/60)%10 );
-	BIT_CLE(digit_hours, PINB3); 				// enable dot segment
-	
 }
 
 
@@ -277,27 +237,14 @@ void set_timer_values() {
 /*	START OF DISPLAY FUNCTIONS                                          */
 /************************************************************************/
 
-// Display SL ON (sleep on)
-void display_slon() {
-	digit_dec_hours		= DIGIT_S;
-	digit_hours			= DIGIT_L;
-	digit_dec_minutes	= DIGIT_O;
-	digit_minutes		= DIGIT_N;
-}
 
-// Display SL OF (sleep off)
-void display_slof() {
-	digit_dec_hours		= DIGIT_S;
-	digit_hours			= DIGIT_L;
-	digit_dec_minutes	= DIGIT_O;
-	digit_minutes		= DIGIT_F;
-}
 
 void display_disable() {
 	FIRST_OFF; 	SECOND_OFF; THIRD_OFF; FOUR_OFF;
 }
 
-void display_time() {
+
+void display_values() {
 	if(digit_dec_hours != DIGIT_ZERO) { // Do not show first digit if it is zero
 		PORTB = digit_dec_hours;		FIRST_ON;	_delay_ms(5);	FIRST_OFF;
 	}
@@ -318,25 +265,22 @@ void display_time() {
 /************************************************************************/
 
 /************************************************************************/
-/*	WATCHDOG timer fires every 8 seconds                                */
+/*	WATCHDOG timer fires every 8 seconds, we get values only on each    */
+/*  third interrupt, so that each 24 seconds                            */
 /************************************************************************/
+
+
 ISR(WDT_vect) {
-	get_clock();
-	
-//	set_timer_values();
-	
-	if(go_to_sleep) { // we are slipping now ... just blink
-		BIT_CLE(PORTC, PINC0); _delay_ms(100); BIT_SET(PORTC, PINC0);	
+	if(clock_mode) {
+		get_clock();
+	} else {
+        get_temperature();	
 	}
 	
-	if(sleep && (hour>=sleep_start) && (hour<SLEEP_END)) {
-		go_to_sleep = true;		// setting go_to_sleep flag
-		BIT_SET(PORTC, PINC0);	// turn on blue light
-	} else {
-		go_to_sleep = false;
-	}  
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
+
+
 
 /************************************************************************/
 /*	Getting clock data every 26 seconds									*/
@@ -354,12 +298,21 @@ ISR(TIMER0_OVF_vect) {
 */
 
 /************************************************************************/
+/*	Getting clock data every 67 seconds									*/
+/*	Implemented on a 16 bit timer overflow								*/
+/************************************************************************/
+/*
+ISR(TIMER1_OVF_vect) {
+	clock_mode ? get_clock() : get_temperature();
+}
+*/
+
+/************************************************************************/
 /*	Button processing by INT1 interrupt (PD3 pin low state)				*/
 /*	This will turn on LEFT LED FLASH LIGHT								*/           
 /************************************************************************/
 ISR(INT1_vect) {
 	display_disable();		// JUST CLRSCR
-	light_enabled = !light_enabled;
 	BIT_FLIP(PORTC, PINC1);
 	_delay_ms(200);
 }
@@ -369,16 +322,16 @@ ISR(INT1_vect) {
 /*	This will turn on BLUE LED LIGHT and enable DAILY SLEEP MODE		*/
 /************************************************************************/
 ISR(INT0_vect) {
-	display_disable();	// JUST CLRSCR
-	sleep = !sleep;
-	if(sleep) {
-		display_slon();
+	display_disable();		// JUST CLRSCR
+	if(clock_mode) {
+		get_temperature();
+		clock_mode = false;
 	} else {
-		BIT_CLE(PORTC, PINC0); // Turn off sleep indicator immediatelly
-		display_slof();
-		go_to_sleep = false;
+		get_clock();
+		clock_mode = true;
 	}
-	_delay_ms(200);
+	//BIT_FLIP(PORTC, PINC0); // Turn off sleep indicator immediatelly
+	_delay_ms(400);
 }
 /************************************************************************/
 /*	END OF INTERRUPT ROUTINES	                                        */
@@ -389,15 +342,20 @@ ISR(INT0_vect) {
 
 int main(void)
 {
+	//clock_prescale_set(clock_div_256);
+	
 	BIT_SET(ACSR, ACD);									// Disable Analog Comparator
-	BIT_CLE(ADCSRB, ADEN);	     								// Disable Analog to Digital Converter
+	BIT_CLE(ADCSRB, ADEN);	     						// Disable Analog to Digital Converter
 
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
 	set_hours(9);										// Initial clock settings
 	set_minutes(30);									// Initial clock settings
-	get_clock();
+	
+	//_delay_ms(2000);
+	
+	//get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
 	PORTB	= 0x00;										// Ground all segments (TURN ON).
@@ -414,9 +372,19 @@ int main(void)
 	TCNT0	= 0x00; 		 		 					// Zero timer (start it)
 	*/
 
+	/* 16 bit timer.  Overflow routine  - ISR(TIMER1_OVF_vect) */
+	/*
+	TIMSK1	= 1<<TOIE1;				 // Enable overflow interrupt by timer T1
+	TCCR1B	= (1<<CS10) | (1<<CS12); // Set up timer at F_CPU/1024
+	TCNT1	= 0x00; 		 		 // Zero timer (start it)
+	*/
+
+
+	
 	wdt_reset();										// Reset watch dog timer
 	wdt_enable(WDTO_8S);								// Set watch dog to run every 8 seconds
 	WDTCSR |= (1<<WDIE);								// Set watch dog action to fire interrupt instead of reset
+	
 	
 	// ENABLE INT1 interrupt
 	EICRA&=~((1<<ISC11)|(1<<ISC10)|(1<<ISC00)|(1<<ISC01));	// Set LOW LEVEL interrupt for INT0 & INT1
@@ -432,27 +400,16 @@ int main(void)
 
 	sei();									// Enable global interrupts
 
-	//BIT_SET(PORTC, PC1);
-	//BIT_SET(PORTC, PC0);
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);	// Set Sleep Mode
+	get_temperature();
 	
 	while(1) {
-		check_and_adjust_clock();
+		if(clock_mode) {
+			check_and_adjust_clock();
 		
-		if(BIT_CHECK(PINC,PINC2)) {			// Adjust clock button was released
-			press_delay	= DEFAULT_PRESS_DELAY;
-		} 
-
-		if(go_to_sleep) {
-			display_disable();
-			cli();								// Disable Interrupts
-			sleep_enable();						// Enable Sleep Mode
-			sleep_bod_disable();				// Disable the Brown Out Detector (during sleep)
-			sei();								// Enable Interrupts
-			sleep_cpu();						// Go to Sleep
-			sleep_disable();					// Entrance point
-		} else {
-			display_time();			
+			if(BIT_CHECK(PINC,PINC2)) {			// Adjust clock button was released
+				press_delay	= DEFAULT_PRESS_DELAY;
+			} 
 		}
+		display_values();			
 	}
 }

@@ -1,0 +1,21 @@
+ Volume in drive C is OSDisk
+ Volume Serial Number is 4E15-3165
+
+ Directory of C:\_LEMG\desctop\arduino\MK\src\Attiny88.DS3231.7Segment.SMD.MultiplexThermometr\Attiny88.DS3231.7Seg.SMD.MultiplexTherm
+
+28/02/2018  11:48    <DIR>          .
+28/02/2018  11:48    <DIR>          ..
+28/02/2018  11:48                 0 a
+28/02/2018  11:25             1,027 Attiny88.DS3231.7Seg.SMD.MultiplexTherm.atsln
+28/02/2018  11:42             3,816 Attiny88.DS3231.7Seg.SMD.MultiplexTherm.componentinfo.xml
+28/02/2018  11:42             6,461 Attiny88.DS3231.7Seg.SMD.MultiplexTherm.cproj
+14/12/2016  12:17            11,214 binary.h
+28/02/2018  11:44               232 burn.bat
+28/02/2018  11:42    <DIR>          Debug
+03/03/2017  15:33               154 examples.txt
+14/12/2016  12:17             5,649 i2cmaster.h
+01/03/2017  13:27             8,881 i2cmaster.S
+12/09/2017  14:19            14,012 main.c
+28/02/2018  11:43    <DIR>          Release
+              10 File(s)         51,446 bytes
+               4 Dir(s)  68,468,166,656 bytes free
