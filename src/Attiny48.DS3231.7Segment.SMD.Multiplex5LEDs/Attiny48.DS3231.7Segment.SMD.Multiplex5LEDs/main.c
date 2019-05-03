@@ -59,10 +59,10 @@
 volatile uint8_t hour			= 0;
 volatile uint8_t minute			= 0;
 
-volatile uint8_t digit_dec_minutes	= 0;
-volatile uint8_t digit_minutes		= 0;
-volatile uint8_t digit_dec_hours	= 0;
-volatile uint8_t digit_hours		= 0;
+volatile uint8_t digit_dec_minutes	= DIGIT_ALL_ENABLE;
+volatile uint8_t digit_minutes		= DIGIT_ALL_ENABLE;
+volatile uint8_t digit_dec_hours	= DIGIT_ALL_ENABLE;
+volatile uint8_t digit_hours		= DIGIT_ALL_ENABLE;
 
 
 uint8_t dec_do_bcd(uint8_t val) {
@@ -256,8 +256,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(9);										// Initial clock settings
-	set_minutes(30);									// Initial clock settings
+	set_hours(23);										// Initial clock settings
+	set_minutes(50);									// Initial clock settings
 	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
@@ -284,15 +284,16 @@ int main(void)
 	BIT_SET(PORTD, PIND3);					// Pull up res for input pin INT1  "Light On/Off"
 	BIT_SET(PORTD, PIND2);					// Pull up res for input pin INT0  "Adjust clock"
 	
-	//BIT_CLE(PORTC, PINC0);
+	BIT_CLE(PORTC, PINC0);					// Ground LED controlling Transistor's base (Turn off LED light)
 
 	sei();									// Enable global interrupts
 
 	
+
+	
+
 while(1) {
-		display_time();
+		display_time();	
 	}
-	
-	
 }
 
