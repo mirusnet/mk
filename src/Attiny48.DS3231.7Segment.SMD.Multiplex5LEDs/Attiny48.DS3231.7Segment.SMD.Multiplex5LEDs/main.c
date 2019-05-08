@@ -55,7 +55,7 @@
 // We are using custom delay with count * 10ms cycles, so that 20*10=200ms
 #define DEFAULT_PRESS_DELAY  20
 
-volatile uint8_t press_delay		= DEFAULT_PRESS_DELAY;
+uint8_t press_delay		= DEFAULT_PRESS_DELAY;
 
 /************************************************************************/
 /*	START OF CLOCK FUNCTIONS                                            */
@@ -212,10 +212,12 @@ void display_time(void) {
 /************************************************************************/
 /*	WATCHDOG timer fires every 8 seconds                                */
 /************************************************************************/
+
 ISR(WDT_vect) {
 	get_clock();
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
+
 
 /************************************************************************/
 /*	Getting clock data every 26 seconds									*/
@@ -237,11 +239,14 @@ ISR(TIMER0_OVF_vect) {
 /*	This will turn on LEFT LED FLASH LIGHT								*/           
 /************************************************************************/
 
+
 ISR(INT1_vect) {
 	display_disable();		// JUST CLRSCR
 	BIT_FLIP(PORTC, PINC0);
-	_delay_ms(300);
+	_delay_ms(200);
 }
+
+
 
 /************************************************************************/
 /*	Button processing by INT0 interrupt (PD2 pin low state)				*/
@@ -308,9 +313,8 @@ int main(void)
 	
 
 	
-
 while(1) {
-	
+		
 	// Clock button was released, we should set delay to the default value
 	if(press_delay != DEFAULT_PRESS_DELAY && BIT_CHECK(PIND, PIND2)) {
 		press_delay = DEFAULT_PRESS_DELAY;
@@ -327,6 +331,7 @@ while(1) {
 	
 	
 		display_time();	
+		
 	}
 }
 
