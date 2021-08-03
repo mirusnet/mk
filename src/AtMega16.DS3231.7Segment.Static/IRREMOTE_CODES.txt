@@ -1,0 +1,209 @@
+
+гирлянда пульт
+
+NEC PROTOCOL
+ON
+FFA25D
+OF
+FFE21D
+
+
+
+
+TV
+SAMSUNG PROTOCOL
+ON E0E040BF
+ 1 E0E020DF
+ 2 E0E0A05F 
+
+
+x96
+NEC PROTOCOL
+on 807F02FD
+1  807F728D
+2  807FB04F 
+
+
+
+
+
+I would recommend to use IR Receiver for Light Barrier like TSSP4038 or TSSP58038 ( or TSSP4056 for 56kHz).
+
+These look exactly the same as the TSOP1738 but they are designed to receive continuous IR signal. 
+Datasheet says the range is up to 25m with direct beam, 2m with reflected beam. Recommended IR LED is TSAL6200.
+
+
+X96 ON COMMAND 807F02FD
+8680 HIGH (inverted)
+4456 LOW  (inverted)
+
+392 
+1640
+396
+512
+432
+520
+436
+512
+436
+516
+436
+520
+436
+512
+432
+524
+436
+512
+440
+1636
+392
+1636
+388
+1636
+396
+1640
+392
+1640
+396
+1636
+400
+1636
+388
+516
+428
+520
+440
+516
+436
+516
+440
+516
+436
+512
+432
+1648
+400
+508
+436
+1636
+392
+1632
+396
+1636
+396
+1640
+396
+1636
+388
+1644
+392
+512
+436
+1640
+
+396
+
+
+
+pult ot girliandu ON COMMAND  FFA25D NEC [0000 0000] [1111 1111]    [1010 0010]    [0101 1101]
+8820
+4520
+
+404
+528
+
+444
+536
+
+436
+528
+
+452
+528
+
+440
+536
+
+444
+532
+
+444
+536
+
+436
+540
+
+440
+1652
+
+388
+1652
+
+404
+1648
+
+396
+1656
+
+400
+1648
+
+392
+1656
+
+392
+1652
+
+400
+1644
+
+396
+1652
+
+404
+528
+
+444
+1652
+
+396
+532
+
+432
+540
+
+440
+532
+
+444
+1648
+
+400
+532
+
+444
+532
+
+436
+1652
+
+392
+540
+
+436
+1648
+
+396
+1652
+
+404
+1648
+
+396
+540
+
+440
+1652
+
+384

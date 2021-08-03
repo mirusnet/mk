@@ -1,0 +1,1 @@
+https://github.com/lpodkalicki/blog/blob/master/avr/attiny13/013_ir_receiver_38khz_nec_proto_analyzer/ir.c
