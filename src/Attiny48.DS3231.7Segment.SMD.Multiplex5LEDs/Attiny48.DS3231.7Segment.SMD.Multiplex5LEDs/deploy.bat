@@ -1,1 +1,1 @@
-avrdude -B8 -p attiny48 -P usb -c usbasp -U flash:w:"D:\mk\git\mk\src\Attiny48.DS3231.7Segment.SMD.Multiplex5LEDs\Attiny48.DS3231.7Segment.SMD.Multiplex5LEDs\ReleaseAttiny48.DS3231.7Segment.SMD.Multiplex5LEDs.hex":i
+avrdude -B8 -p attiny48 -P usb -c usbasp -U flash:w:"D:\mk\git\mk\src\Attiny48.DS3231.7Segment.SMD.Multiplex5LEDs\Attiny48.DS3231.7Segment.SMD.Multiplex5LEDs\Release\Attiny48.DS3231.7Segment.SMD.Multiplex5LEDs.hex":i

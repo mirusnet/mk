@@ -52,6 +52,11 @@
 #define DIGIT_F				0x9C
 
 
+// We are using custom delay with count * 10ms cycles, so that 20*10=200ms
+#define DEFAULT_PRESS_DELAY  20
+
+uint8_t press_delay		= DEFAULT_PRESS_DELAY;
+
 /************************************************************************/
 /*	START OF CLOCK FUNCTIONS                                            */
 /************************************************************************/
@@ -64,6 +69,11 @@ volatile uint8_t digit_minutes		= DIGIT_ALL_ENABLE;
 volatile uint8_t digit_dec_hours	= DIGIT_ALL_ENABLE;
 volatile uint8_t digit_hours		= DIGIT_ALL_ENABLE;
 
+static inline void custom_delay_ten_ms(uint8_t count) {
+	while(count--) {
+		_delay_ms(10);
+	}
+}
 
 uint8_t dec_do_bcd(uint8_t val) {
 	return ( (val/10*16) + (val%10) );
@@ -202,10 +212,12 @@ void display_time(void) {
 /************************************************************************/
 /*	WATCHDOG timer fires every 8 seconds                                */
 /************************************************************************/
+
 ISR(WDT_vect) {
 	get_clock();
 	WDTCSR |= (1<<WDIE);	// Set watch dog action to fire interrupt instead of reset
 }
+
 
 /************************************************************************/
 /*	Getting clock data every 26 seconds									*/
@@ -226,21 +238,27 @@ ISR(TIMER0_OVF_vect) {
 /*	Button processing by INT1 interrupt (PD3 pin low state)				*/
 /*	This will turn on LEFT LED FLASH LIGHT								*/           
 /************************************************************************/
+
+
 ISR(INT1_vect) {
 	display_disable();		// JUST CLRSCR
 	BIT_FLIP(PORTC, PINC0);
-	_delay_ms(300);
+	_delay_ms(200);
 }
+
+
 
 /************************************************************************/
 /*	Button processing by INT0 interrupt (PD2 pin low state)				*/
 /*	Clock adjustment													*/
 /************************************************************************/
+/*
 ISR(INT0_vect) {
 	display_disable();	// JUST CLRSCR
 	adjust_clock();
 	_delay_ms(300);
 }
+*/
 /************************************************************************/
 /*	END OF INTERRUPT ROUTINES	                                        */
 /************************************************************************/
@@ -256,8 +274,8 @@ int main(void)
 	i2c_init();											// Initialize I2C interface
 	set_24h_format(); 									// This will also clear hour register
 	
-	set_hours(23);										// Initial clock settings
-	set_minutes(50);									// Initial clock settings
+	set_hours(14);										// Initial clock settings
+	set_minutes(0);									// Initial clock settings
 	get_clock();
 		
 	DDRB	= 0xFF; 									// Set all pins of PORTB as output
@@ -274,8 +292,12 @@ int main(void)
 	WDTCSR |= (1<<WDIE);								// Set watch dog action to fire interrupt instead of reset
 	
 	// ENABLE INT1 and INT0 interrupts
-	EICRA&=~((1<<ISC11)|(1<<ISC10)|(1<<ISC00)|(1<<ISC01));	// Set LOW LEVEL interrupt for INT0 & INT1
-	EIMSK|=((1<<INT1)|(1<<INT0)); 							// Enable interrupt on INT1
+	//EICRA&=~((1<<ISC11)|(1<<ISC10)|(1<<ISC00)|(1<<ISC01));	// Set LOW LEVEL interrupt for INT0 & INT1
+	//EIMSK|=((1<<INT1)|(1<<INT0)); 							// Enable interrupt on INT1
+	
+	// ENABLE INT1 interrupt
+	EICRA&=~((1<<ISC11)|(1<<ISC10));		// Set LOW LEVEL interrupt for INT1
+	EIMSK|=(1<<INT1); 						// Enable interrupt on INT1
 	
 	BIT_CLE(DDRD, PIND3);					// Input pin for button INT1  "Light On/Off"
 	BIT_CLE(DDRD, PIND2);					// Input pin for button INT0  "Adjust clock"
@@ -291,9 +313,25 @@ int main(void)
 	
 
 	
-
 while(1) {
+		
+	// Clock button was released, we should set delay to the default value
+	if(press_delay != DEFAULT_PRESS_DELAY && BIT_CHECK(PIND, PIND2)) {
+		press_delay = DEFAULT_PRESS_DELAY;
+	}
+	
+	// Clock button pressed
+	if(!BIT_CHECK(PIND, PIND2)) {
+		if(press_delay >1) {
+			--press_delay;
+		}
+		adjust_clock();
+		custom_delay_ten_ms(press_delay);
+	}
+	
+	
 		display_time();	
+		
 	}
 }
 
