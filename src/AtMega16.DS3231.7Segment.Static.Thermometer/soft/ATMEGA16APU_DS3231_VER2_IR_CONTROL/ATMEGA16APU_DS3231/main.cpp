@@ -38,6 +38,29 @@ uint8_t get_temperature(void) {
 	return temperature;
 }
 
+uint8_t get_temperature_fractional(void) {
+	i2c_start_wait(0xD0);					// set device address and write mode
+	i2c_write(0x12); 						// write "read from" byte
+	i2c_rep_start(0xD1); 					// set device address and read mode
+	uint8_t temperature = i2c_readNak(); 	// read one byte
+	i2c_stop();
+	
+	uint8_t fractional = temperature >> 6;  // two bytes are at left, so we're moving them to right
+	if(fractional == 0) { //00 - no fractional part
+		return 0;
+	} else if (fractional == 1) { // (binary 01) - means 1*0.25
+		return 3; // just rounding
+	} else if (fractional == 2) { // (binary 10) - means 2*0.25
+		return 5;
+	} else if (fractional == 3) { // (binary 11) - means 3*0.25
+		return 8; // just rounding
+	} else {
+		return 0;
+	}
+	
+	
+}
+
 
 void disableBlinking() {
 	
@@ -49,11 +72,23 @@ void disableBlinking() {
 	
 }
 
+void enableBlinking() {
+	
+	uint8_t controlByte = 0b00000000;		// INTCN=1 disable square wave output
+	i2c_start_wait(0xD0);					// set device address and WRITE mode
+	i2c_write(0x0E); 						// write "write to" byte
+	i2c_write(controlByte);					// set controlByte
+	i2c_stop();
+	
+}
+
 
 // Get clock Every 16 seconds
 ISR(TIMER1_OVF_vect)
 {
-	set_all_digits(get_temperature());
+	set_digit_1(get_temperature()/10);
+	set_digit_2(get_temperature()%10);
+	set_digit_4(get_temperature_fractional());
 }
 
 
@@ -106,11 +141,16 @@ int main(void)
 	
 	i2c_init();
 	disableBlinking();
+	//enableBlinking();
 	_delay_ms(50);
 	
 
 	disable_all_digits();	
-	set_all_digits(get_temperature()); // GET CLOCK FIRST TIME, UPDATE DISPLAY
+
+	set_digit_1(get_temperature()/10);
+	set_digit_2(get_temperature()%10);
+	set_digit_4(get_temperature_fractional());
+	
 
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei(); // Enable global interrupt

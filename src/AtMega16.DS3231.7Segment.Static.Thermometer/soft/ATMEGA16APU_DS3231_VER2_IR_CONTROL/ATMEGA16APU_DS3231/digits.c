@@ -182,6 +182,16 @@ switch (digit) {
     }
 }
 
+void set_digit_3_underscore() {
+	BIT_SET(S3A_PORT, S3A_PIN);
+	BIT_SET(S3B_PORT, S3B_PIN);
+	BIT_SET(S3C_PORT, S3C_PIN);
+	BIT_CLE(S3D_PORT, S3D_PIN);
+	BIT_SET(S3E_PORT, S3E_PIN);
+	BIT_SET(S3F_PORT, S3F_PIN);
+	BIT_SET(S3G_PORT, S3G_PIN);
+}
+
 void set_digit_3(uint8_t digit) {
 switch (digit) {
         case 0: 
@@ -497,9 +507,11 @@ switch (digit) {
 */
 
 void set_all_digits(uint8_t temperature) {
-	set_digit_3(temperature/10); 
-	set_digit_4(temperature%10);
+//	set_digit_1(temperature/10); 
+//	set_digit_2(temperature%10);
+	set_digit_3(temperature);
 }
+
 
 void disable_all_digits() {
 	 
